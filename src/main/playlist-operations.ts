@@ -180,6 +180,26 @@ export class PlaylistOperations {
         `[Merge] Collected ${allTrackUris.length} tracks (duplicates ${removeDuplicates ? 'removed' : 'kept'})`
       );
 
+      // Validate all URIs are valid Spotify track URIs
+      const validTrackUris = allTrackUris.filter((uri) => {
+        const isValid = uri && uri.startsWith('spotify:track:') && uri.split(':').length === 3;
+        if (!isValid) {
+          console.log(`[Merge] Skipping invalid URI: ${uri}`);
+        }
+        return isValid;
+      });
+
+      if (validTrackUris.length === 0) {
+        return {
+          success: false,
+          error: 'No valid tracks to merge (all tracks were unlinked or invalid)',
+        };
+      }
+
+      console.log(
+        `[Merge] Validated ${validTrackUris.length} track URIs (${allTrackUris.length - validTrackUris.length} invalid)`
+      );
+
       // Create new playlist
       console.log(`[Merge] Creating new playlist "${targetName}"...`);
       const createResponse = await this.spotifyApi.createPlaylist(targetName, {
@@ -192,18 +212,19 @@ export class PlaylistOperations {
 
       // Add tracks in batches of 100 (Spotify API limit)
       const batchSize = 100;
-      const batches = Math.ceil(allTrackUris.length / batchSize);
+      const batches = Math.ceil(validTrackUris.length / batchSize);
 
       for (let i = 0; i < batches; i++) {
         const start = i * batchSize;
-        const end = Math.min(start + batchSize, allTrackUris.length);
-        const batch = allTrackUris.slice(start, end);
+        const end = Math.min(start + batchSize, validTrackUris.length);
+        const batch = validTrackUris.slice(start, end);
 
         console.log(`[Merge] Adding batch ${i + 1}/${batches} (${batch.length} tracks)...`);
+        console.log(`[Merge] Sample URIs: ${batch.slice(0, 3).join(', ')}`);
         await this.spotifyApi.addTracksToPlaylist(newPlaylistId, batch);
       }
 
-      console.log(`[Merge] Successfully added ${allTrackUris.length} tracks`);
+      console.log(`[Merge] Successfully added ${validTrackUris.length} tracks`);
 
       // Delete source playlists if requested
       if (deleteSource) {
@@ -223,7 +244,7 @@ export class PlaylistOperations {
           source_playlists: playlistIds,
           target_playlist: newPlaylistId,
           target_name: targetName,
-          track_count: allTrackUris.length,
+          track_count: validTrackUris.length,
           remove_duplicates: removeDuplicates,
           delete_source: deleteSource,
         }),
@@ -235,7 +256,7 @@ export class PlaylistOperations {
       return {
         success: true,
         playlistId: newPlaylistId,
-        trackCount: allTrackUris.length,
+        trackCount: validTrackUris.length,
       };
     } catch (error) {
       console.error('[Merge] Merge failed:', error);
