@@ -510,3 +510,37 @@ button:disabled {
   color: var(--text-primary);
   font-size: 11px;
 }
+
+/* Context menu */
+.context-menu {
+  position: fixed;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  min-width: 200px;
+  z-index: 2000;
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.15);
+}
+
+.context-menu-item {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-primary);
+  font-size: 11px;
+  transition: background-color 0.05s;
+}
+
+.context-menu-item:hover:not(.context-menu-item-disabled) {
+  background-color: var(--bg-hover);
+}
+
+.context-menu-item-disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: var(--border-dim);
+  margin: var(--spacing-xs) 0;
+}

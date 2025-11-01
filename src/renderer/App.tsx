@@ -6,6 +6,7 @@ import { useSelection } from './hooks/useSelection';
 import { filterPlaylists } from './utils/filterPlaylists';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import { TagModal } from './components/TagModal';
+import { ContextMenu } from './components/ContextMenu';
 import { UI_CONSTANTS } from '@shared/constants';
 import type { LocalPlaylist } from '@shared/types';
 
@@ -37,6 +38,13 @@ function App() {
   const [showTagModal, setShowTagModal] = useState(false);
   const [playlistsToTag, setPlaylistsToTag] = useState<LocalPlaylist[]>([]);
   const [savingTags, setSavingTags] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    playlist: LocalPlaylist;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Playlist management
   const {
@@ -253,6 +261,62 @@ function App() {
     setPlaylistsToTag([]);
   };
 
+  // Context menu handlers
+  const handleContextMenu = (
+    playlist: LocalPlaylist,
+    e: React.MouseEvent<HTMLDivElement>
+  ) => {
+    e.preventDefault();
+    setContextMenu({
+      playlist,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const handleOpenInSpotify = () => {
+    if (!contextMenu) return;
+    const url = `https://open.spotify.com/playlist/${contextMenu.playlist.spotify_id}`;
+    window.open(url, '_blank');
+  };
+
+  const handleCopyLink = async () => {
+    if (!contextMenu) return;
+    const url = `https://open.spotify.com/playlist/${contextMenu.playlist.spotify_id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      console.log('Copied playlist link to clipboard');
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  const handleCopyId = async () => {
+    if (!contextMenu) return;
+    try {
+      await navigator.clipboard.writeText(contextMenu.playlist.spotify_id);
+      console.log('Copied playlist ID to clipboard');
+    } catch (err) {
+      console.error('Failed to copy ID:', err);
+    }
+  };
+
+  const handleContextDelete = async () => {
+    if (!contextMenu) return;
+    setPlaylistsToDelete([contextMenu.playlist]);
+    setShowDeleteModal(true);
+  };
+
+  const handleContextEditTags = async () => {
+    if (!contextMenu) return;
+    setPlaylistsToTag([contextMenu.playlist]);
+    setShowTagModal(true);
+  };
+
   // Selection handlers
   const handleCheckboxClick = (
     playlistId: string,
@@ -398,6 +462,7 @@ function App() {
                     key={playlist.spotify_id}
                     className={`table-row ${selected ? 'selected' : ''}`}
                     onClick={(e) => handleRowClick(playlist.spotify_id, e)}
+                    onContextMenu={(e) => handleContextMenu(playlist, e)}
                   >
                     <div
                       className="col-checkbox"
@@ -457,6 +522,25 @@ function App() {
           onConfirm={handleTagConfirm}
           onCancel={handleTagCancel}
           saving={savingTags}
+        />
+      )}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <ContextMenu
+          playlist={contextMenu.playlist}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={handleCloseContextMenu}
+          onOpenInSpotify={handleOpenInSpotify}
+          onCopyLink={handleCopyLink}
+          onCopyId={handleCopyId}
+          onRename={() => {}}
+          onDelete={handleContextDelete}
+          onEditTags={handleContextEditTags}
+          onFindDuplicates={() => {}}
+          onRecoverUnlinked={() => {}}
+          onExportCsv={() => {}}
         />
       )}
     </div>
