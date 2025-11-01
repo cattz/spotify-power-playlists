@@ -231,3 +231,71 @@ button:disabled {
   background: var(--bg-selected);
   color: var(--text-primary);
 }
+
+/* Playlist table */
+.playlist-list {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.playlist-table {
+  width: 100%;
+  font-size: 11px;
+}
+
+.table-header,
+.table-row {
+  display: grid;
+  grid-template-columns: 35px 1fr 70px 100px 95px 150px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-bottom: 1px solid var(--border-dim);
+  align-items: center;
+}
+
+.table-header {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-weight: bold;
+  z-index: 10;
+}
+
+.table-row {
+  transition: background-color 0.05s;
+}
+
+.table-row:hover {
+  background-color: var(--bg-hover);
+  cursor: pointer;
+}
+
+.col-checkbox {
+  text-align: center;
+}
+
+.col-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-tracks,
+.col-modified {
+  text-align: right;
+}
+
+.col-owner {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-tags {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}

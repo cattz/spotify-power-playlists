@@ -6,12 +6,14 @@
  */
 
 import { ipcMain } from 'electron';
-import type { ApiResponse } from '@shared/types';
+import type { ApiResponse, LocalPlaylist } from '@shared/types';
 import { SpotifyAuth } from './auth';
 import { PlaylistDatabase } from './database';
+import { PlaylistSyncService } from './playlist-sync';
 
 let spotifyAuth: SpotifyAuth | null = null;
 let database: PlaylistDatabase | null = null;
+let syncService: PlaylistSyncService | null = null;
 
 /**
  * Initialize services with configuration
@@ -19,6 +21,11 @@ let database: PlaylistDatabase | null = null;
 export function initializeServices(clientId: string, dbPath?: string): void {
   spotifyAuth = new SpotifyAuth(clientId);
   database = new PlaylistDatabase(dbPath);
+
+  // Initialize sync service
+  if (spotifyAuth && database) {
+    syncService = new PlaylistSyncService(spotifyAuth.getSpotifyApi(), database);
+  }
 }
 
 /**
@@ -75,7 +82,7 @@ export function setupIpcHandlers(): void {
   });
 
   // Database handlers
-  ipcMain.handle('db:get-playlists', async (): Promise<ApiResponse<any[]>> => {
+  ipcMain.handle('db:get-playlists', async (): Promise<ApiResponse<LocalPlaylist[]>> => {
     try {
       if (!database) {
         throw new Error('Database not initialized');
@@ -89,6 +96,38 @@ export function setupIpcHandlers(): void {
       return { success: false, error: 'Failed to fetch playlists' };
     }
   });
+
+  // Playlist sync handlers
+  ipcMain.handle(
+    'playlist:sync',
+    async (): Promise<ApiResponse<{ total: number; synced: number }>> => {
+      try {
+        if (!syncService) {
+          throw new Error('Sync service not initialized');
+        }
+
+        if (!spotifyAuth) {
+          throw new Error('Spotify auth not initialized');
+        }
+
+        // Ensure we have a valid access token
+        const accessToken = await spotifyAuth.getAccessToken();
+        if (!accessToken) {
+          throw new Error('Not authenticated');
+        }
+
+        const result = await syncService.syncAllPlaylists();
+
+        return { success: true, data: result };
+      } catch (error) {
+        console.error('Playlist sync error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to sync playlists',
+        };
+      }
+    }
+  );
 
   // Spotify API handlers
   ipcMain.handle('spotify:get-user-playlists', async (): Promise<ApiResponse<any>> => {

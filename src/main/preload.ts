@@ -32,7 +32,9 @@ const api = {
 
   // Playlist operations
   playlists: {
-    // TODO: Add playlist operation methods
+    sync: (): Promise<ApiResponse<{ total: number; synced: number }>> =>
+      ipcRenderer.invoke('playlist:sync'),
+    // TODO: Add more playlist operation methods
     // merge: (config: MergeConfig) => ipcRenderer.invoke('playlist:merge', config),
     // subtract: (config: SubtractConfig) => ipcRenderer.invoke('playlist:subtract', config),
     // etc.
