@@ -4,7 +4,9 @@ import { usePlaylists } from './hooks/usePlaylists';
 import { useDebounce } from './hooks/useDebounce';
 import { useSelection } from './hooks/useSelection';
 import { filterPlaylists } from './utils/filterPlaylists';
+import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import { UI_CONSTANTS } from '@shared/constants';
+import type { LocalPlaylist } from '@shared/types';
 
 /**
  * Main application component
@@ -25,6 +27,11 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [playlistsToDelete, setPlaylistsToDelete] = useState<LocalPlaylist[]>([]);
+  const [deleting, setDeleting] = useState(false);
+
   // Playlist management
   const {
     playlists,
@@ -32,6 +39,7 @@ function App() {
     error: playlistsError,
     syncing,
     syncPlaylists,
+    refreshPlaylists,
   } = usePlaylists();
 
   // Selection management
@@ -128,6 +136,68 @@ function App() {
 
   const handleSync = async () => {
     await syncPlaylists();
+  };
+
+  // Delete handlers
+  const handleDeleteClick = async () => {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    // Get details for selected playlists
+    const selectedPlaylistIds = Array.from(selectedIds);
+    const result = await window.electronAPI.playlists.getDetails(selectedPlaylistIds);
+
+    if (result.success && result.data) {
+      setPlaylistsToDelete(result.data);
+      setShowDeleteModal(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    // SAFETY CHECK: Prevent accidental deletion during testing
+    console.log('DELETE OPERATION TRIGGERED');
+    console.log('Would delete playlists:', playlistsToDelete.map((p) => p.name));
+
+    // TODO: Uncomment this block when ready for actual deletion
+    /*
+    setDeleting(true);
+
+    try {
+      const selectedPlaylistIds = playlistsToDelete.map((p) => p.spotify_id);
+      const result = await window.electronAPI.playlists.delete(selectedPlaylistIds);
+
+      if (result.success && result.data) {
+        console.log(`Deleted ${result.data.deleted} playlists`);
+
+        if (result.data.failed.length > 0) {
+          console.error(`Failed to delete ${result.data.failed.length} playlists`);
+        }
+
+        // Clear selection and close modal
+        clearSelection();
+        setShowDeleteModal(false);
+
+        // Refresh playlist list
+        await refreshPlaylists();
+      } else {
+        console.error('Delete failed:', result.error);
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+    } finally {
+      setDeleting(false);
+    }
+    */
+
+    // For now, just close the modal for testing UI flow
+    setShowDeleteModal(false);
+    setDeleting(false);
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setPlaylistsToDelete([]);
   };
 
   // Selection handlers
@@ -303,12 +373,27 @@ function App() {
         <button disabled>TAG</button>
         <button disabled>SUBTRACT</button>
         <button disabled>INTERSECT</button>
-        <button disabled>DELETE</button>
+        <button
+          onClick={handleDeleteClick}
+          disabled={!authenticated || selectedIds.size === 0}
+        >
+          DELETE
+        </button>
         <button disabled>SETTINGS</button>
         <button onClick={handleSync} disabled={!authenticated || syncing}>
           {syncing ? 'SYNCING...' : 'SYNC'}
         </button>
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <DeleteConfirmationModal
+          playlists={playlistsToDelete}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          deleting={deleting}
+        />
+      )}
     </div>
   );
 }

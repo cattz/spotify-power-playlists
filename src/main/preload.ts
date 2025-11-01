@@ -34,6 +34,12 @@ const api = {
   playlists: {
     sync: (): Promise<ApiResponse<{ total: number; synced: number }>> =>
       ipcRenderer.invoke('playlist:sync'),
+    getDetails: (playlistIds: string[]): Promise<ApiResponse<any[]>> =>
+      ipcRenderer.invoke('playlist:get-details', playlistIds),
+    delete: (
+      playlistIds: string[]
+    ): Promise<ApiResponse<{ deleted: number; failed: string[] }>> =>
+      ipcRenderer.invoke('playlist:delete', playlistIds),
     // TODO: Add more playlist operation methods
     // merge: (config: MergeConfig) => ipcRenderer.invoke('playlist:merge', config),
     // subtract: (config: SubtractConfig) => ipcRenderer.invoke('playlist:subtract', config),

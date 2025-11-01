@@ -10,10 +10,12 @@ import type { ApiResponse, LocalPlaylist } from '@shared/types';
 import { SpotifyAuth } from './auth';
 import { PlaylistDatabase } from './database';
 import { PlaylistSyncService } from './playlist-sync';
+import { PlaylistOperations } from './playlist-operations';
 
 let spotifyAuth: SpotifyAuth | null = null;
 let database: PlaylistDatabase | null = null;
 let syncService: PlaylistSyncService | null = null;
+let operations: PlaylistOperations | null = null;
 
 /**
  * Initialize services with configuration
@@ -22,9 +24,10 @@ export function initializeServices(clientId: string, dbPath?: string): void {
   spotifyAuth = new SpotifyAuth(clientId);
   database = new PlaylistDatabase(dbPath);
 
-  // Initialize sync service
+  // Initialize services
   if (spotifyAuth && database) {
     syncService = new PlaylistSyncService(spotifyAuth.getSpotifyApi(), database);
+    operations = new PlaylistOperations(spotifyAuth.getSpotifyApi(), database);
   }
 }
 
@@ -156,10 +159,86 @@ export function setupIpcHandlers(): void {
     }
   });
 
+  // Playlist operations handlers
+  ipcMain.handle(
+    'playlist:get-details',
+    async (
+      _event,
+      playlistIds: string[]
+    ): Promise<ApiResponse<LocalPlaylist[]>> => {
+      try {
+        if (!operations) {
+          throw new Error('Operations service not initialized');
+        }
+
+        const details = operations.getPlaylistDetails(playlistIds);
+
+        return { success: true, data: details };
+      } catch (error) {
+        console.error('Get playlist details error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get playlist details',
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'playlist:delete',
+    async (
+      _event,
+      playlistIds: string[]
+    ): Promise<
+      ApiResponse<{
+        deleted: number;
+        failed: string[];
+      }>
+    > => {
+      try {
+        if (!operations) {
+          throw new Error('Operations service not initialized');
+        }
+
+        if (!spotifyAuth) {
+          throw new Error('Spotify auth not initialized');
+        }
+
+        // Ensure we have a valid access token
+        const accessToken = await spotifyAuth.getAccessToken();
+        if (!accessToken) {
+          throw new Error('Not authenticated');
+        }
+
+        const result = await operations.deletePlaylists(playlistIds);
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error,
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            deleted: result.deleted,
+            failed: result.failed,
+          },
+        };
+      } catch (error) {
+        console.error('Delete playlists error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to delete playlists',
+        };
+      }
+    }
+  );
+
   // TODO: Add more handlers as needed
   // - spotify:get-playlist-tracks
   // - spotify:create-playlist
-  // - spotify:delete-playlist
   // - spotify:rename-playlist
   // - playlist:merge
   // - playlist:subtract
