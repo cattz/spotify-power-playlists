@@ -128,10 +128,6 @@ export class PlaylistOperations {
     try {
       console.log(`[Merge] Starting merge of ${playlistIds.length} playlists...`);
 
-      // Get current user ID
-      const userResponse = await this.spotifyApi.getMe();
-      const userId = userResponse.body.id;
-
       // Fetch all tracks from source playlists
       const allTrackUris: string[] = [];
       const trackUrisSeen = new Set<string>();
@@ -182,7 +178,7 @@ export class PlaylistOperations {
 
       // Create new playlist
       console.log(`[Merge] Creating new playlist "${targetName}"...`);
-      const createResponse = await this.spotifyApi.createPlaylist(userId, targetName, {
+      const createResponse = await this.spotifyApi.createPlaylist(targetName, {
         description: `Merged from ${playlistIds.length} playlists`,
         public: false,
       });
