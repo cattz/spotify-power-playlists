@@ -182,7 +182,7 @@ export class PlaylistOperations {
 
       // Create new playlist
       console.log(`[Merge] Creating new playlist "${targetName}"...`);
-      const createResponse = await this.spotifyApi.createPlaylist(targetName, {
+      const createResponse = await this.spotifyApi.createPlaylist(userId, targetName, {
         description: `Merged from ${playlistIds.length} playlists`,
         public: false,
       });
