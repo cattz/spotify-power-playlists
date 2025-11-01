@@ -487,8 +487,11 @@ function App() {
         // Refresh playlist list
         await refreshPlaylists();
       } else {
+        const errorMsg = typeof result.error === 'string'
+          ? result.error
+          : JSON.stringify(result.error);
         console.error('[Fix Broken Links] Failed:', result.error);
-        alert(`Failed to fix broken links: ${result.error}`);
+        alert(`Failed to fix broken links: ${errorMsg}`);
       }
     } catch (err) {
       console.error('[Fix Broken Links] Error:', err);
