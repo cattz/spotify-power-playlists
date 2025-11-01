@@ -151,19 +151,23 @@ export class PlaylistOperations {
           }
 
           for (const item of items) {
-            if (item.track && item.track.uri) {
-              const uri = item.track.uri;
+            // Skip null tracks (unlinked/unavailable)
+            if (!item.track || !item.track.uri) {
+              console.log(`[Merge] Skipping unlinked track in playlist ${playlistId}`);
+              continue;
+            }
 
-              if (removeDuplicates) {
-                // Only add if not seen before
-                if (!trackUrisSeen.has(uri)) {
-                  allTrackUris.push(uri);
-                  trackUrisSeen.add(uri);
-                }
-              } else {
-                // Add all tracks
+            const uri = item.track.uri;
+
+            if (removeDuplicates) {
+              // Only add if not seen before
+              if (!trackUrisSeen.has(uri)) {
                 allTrackUris.push(uri);
+                trackUrisSeen.add(uri);
               }
+            } else {
+              // Add all tracks
+              allTrackUris.push(uri);
             }
           }
 
