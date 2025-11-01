@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import './styles/app.css';
 import { usePlaylists } from './hooks/usePlaylists';
 import { useDebounce } from './hooks/useDebounce';
+import { useSelection } from './hooks/useSelection';
 import { filterPlaylists } from './utils/filterPlaylists';
 import { UI_CONSTANTS } from '@shared/constants';
 
@@ -33,6 +34,17 @@ function App() {
     syncPlaylists,
   } = usePlaylists();
 
+  // Selection management
+  const {
+    selectedIds,
+    isSelected,
+    toggleSelection,
+    selectRange,
+    selectAll,
+    clearSelection,
+    setLastClickedId,
+  } = useSelection();
+
   // Debounce search query
   const debouncedSearch = useDebounce(searchQuery, UI_CONSTANTS.SEARCH_DEBOUNCE_MS);
 
@@ -54,11 +66,23 @@ function App() {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
+
+      // Cmd/Ctrl + A to select all (filtered)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        e.preventDefault();
+        const allIds = filteredPlaylists.map((p) => p.spotify_id);
+        selectAll(allIds);
+      }
+
+      // Escape to clear selection
+      if (e.key === 'Escape') {
+        clearSelection();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [filteredPlaylists, selectAll, clearSelection]);
 
   const checkAuthStatus = async () => {
     try {
@@ -106,6 +130,51 @@ function App() {
     await syncPlaylists();
   };
 
+  // Selection handlers
+  const handleCheckboxClick = (
+    playlistId: string,
+    e: React.MouseEvent<HTMLDivElement>
+  ) => {
+    e.stopPropagation();
+
+    if (e.shiftKey && selectedIds.size > 0) {
+      // Shift+Click: range selection
+      const allIds = filteredPlaylists.map((p) => p.spotify_id);
+      const lastSelected = Array.from(selectedIds)[selectedIds.size - 1];
+      selectRange(lastSelected, playlistId, allIds);
+    } else if (e.metaKey || e.ctrlKey) {
+      // Cmd/Ctrl+Click: toggle selection
+      toggleSelection(playlistId);
+    } else {
+      // Regular click: toggle selection
+      toggleSelection(playlistId);
+    }
+  };
+
+  const handleRowClick = (
+    playlistId: string,
+    e: React.MouseEvent<HTMLDivElement>
+  ) => {
+    // Only handle clicks on the row itself, not on checkbox
+    if ((e.target as HTMLElement).closest('.col-checkbox')) {
+      return;
+    }
+
+    if (e.shiftKey && selectedIds.size > 0) {
+      // Shift+Click: range selection
+      const allIds = filteredPlaylists.map((p) => p.spotify_id);
+      const lastSelected = Array.from(selectedIds)[selectedIds.size - 1];
+      selectRange(lastSelected, playlistId, allIds);
+    } else if (e.metaKey || e.ctrlKey) {
+      // Cmd/Ctrl+Click: toggle selection
+      toggleSelection(playlistId);
+    } else {
+      // Regular click: clear other selections and select this one
+      clearSelection();
+      toggleSelection(playlistId);
+    }
+  };
+
   // Calculate stats (use filtered playlists for visible stats)
   const totalTracks = filteredPlaylists.reduce((sum, p) => sum + p.track_count, 0);
   const totalDuration = filteredPlaylists.reduce((sum, p) => sum + p.duration_ms, 0);
@@ -148,7 +217,7 @@ function App() {
 
       <div className="stats-bar">
         <span>Showing {filteredPlaylists.length} of {playlists.length} playlists</span>
-        <span>0 selected</span>
+        <span>{selectedIds.size} selected</span>
         <span>Total tracks: {totalTracks.toLocaleString()}</span>
         <span>Total duration: {durationHours}h {durationMinutes}m</span>
         <span>Avg: {avgTracks} tracks/playlist</span>
@@ -199,18 +268,30 @@ function App() {
                 <div className="col-modified">MODIFIED</div>
                 <div className="col-tags">TAGS</div>
               </div>
-              {filteredPlaylists.map((playlist) => (
-                <div key={playlist.spotify_id} className="table-row">
-                  <div className="col-checkbox">[ ]</div>
-                  <div className="col-name">{playlist.name}</div>
-                  <div className="col-tracks">{playlist.track_count}</div>
-                  <div className="col-owner" style={{ color: playlist.is_owner ? '#0f0' : '#0a0' }}>
-                    {playlist.is_owner ? 'you' : playlist.owner}
+              {filteredPlaylists.map((playlist) => {
+                const selected = isSelected(playlist.spotify_id);
+                return (
+                  <div
+                    key={playlist.spotify_id}
+                    className={`table-row ${selected ? 'selected' : ''}`}
+                    onClick={(e) => handleRowClick(playlist.spotify_id, e)}
+                  >
+                    <div
+                      className="col-checkbox"
+                      onClick={(e) => handleCheckboxClick(playlist.spotify_id, e)}
+                    >
+                      {selected ? '[x]' : '[ ]'}
+                    </div>
+                    <div className="col-name">{playlist.name}</div>
+                    <div className="col-tracks">{playlist.track_count}</div>
+                    <div className="col-owner" style={{ color: playlist.is_owner ? '#0f0' : '#0a0' }}>
+                      {playlist.is_owner ? 'you' : playlist.owner}
+                    </div>
+                    <div className="col-modified">-</div>
+                    <div className="col-tags">{playlist.tags || '-'}</div>
                   </div>
-                  <div className="col-modified">-</div>
-                  <div className="col-tags">{playlist.tags || '-'}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
