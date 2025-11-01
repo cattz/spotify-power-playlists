@@ -5,6 +5,7 @@ import { useDebounce } from './hooks/useDebounce';
 import { useSelection } from './hooks/useSelection';
 import { filterPlaylists } from './utils/filterPlaylists';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
+import { TagModal } from './components/TagModal';
 import { UI_CONSTANTS } from '@shared/constants';
 import type { LocalPlaylist } from '@shared/types';
 
@@ -31,6 +32,11 @@ function App() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [playlistsToDelete, setPlaylistsToDelete] = useState<LocalPlaylist[]>([]);
   const [deleting, setDeleting] = useState(false);
+
+  // Tag modal state
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [playlistsToTag, setPlaylistsToTag] = useState<LocalPlaylist[]>([]);
+  const [savingTags, setSavingTags] = useState(false);
 
   // Playlist management
   const {
@@ -82,6 +88,14 @@ function App() {
         selectAll(allIds);
       }
 
+      // Cmd/Ctrl + T to edit tags
+      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+        e.preventDefault();
+        if (selectedIds.size > 0) {
+          handleTagClick();
+        }
+      }
+
       // Escape to clear selection
       if (e.key === 'Escape') {
         clearSelection();
@@ -90,7 +104,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [filteredPlaylists, selectAll, clearSelection]);
+  }, [filteredPlaylists, selectAll, clearSelection, selectedIds]);
 
   const checkAuthStatus = async () => {
     try {
@@ -187,6 +201,56 @@ function App() {
   const handleDeleteCancel = () => {
     setShowDeleteModal(false);
     setPlaylistsToDelete([]);
+  };
+
+  // Tag handlers
+  const handleTagClick = async () => {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    // Get details for selected playlists
+    const selectedPlaylistIds = Array.from(selectedIds);
+    const result = await window.electronAPI.playlists.getDetails(selectedPlaylistIds);
+
+    if (result.success && result.data) {
+      setPlaylistsToTag(result.data);
+      setShowTagModal(true);
+    }
+  };
+
+  const handleTagConfirm = async (tags: string, append: boolean) => {
+    setSavingTags(true);
+
+    try {
+      const selectedPlaylistIds = playlistsToTag.map((p) => p.spotify_id);
+      const result = await window.electronAPI.playlists.updateTags(
+        selectedPlaylistIds,
+        tags,
+        append
+      );
+
+      if (result.success && result.data) {
+        console.log(`Updated tags for ${result.data.updated} playlists`);
+
+        // Close modal and refresh playlist list
+        setShowTagModal(false);
+
+        // Refresh playlist list to show updated tags
+        await refreshPlaylists();
+      } else {
+        console.error('Update tags failed:', result.error);
+      }
+    } catch (err) {
+      console.error('Update tags error:', err);
+    } finally {
+      setSavingTags(false);
+    }
+  };
+
+  const handleTagCancel = () => {
+    setShowTagModal(false);
+    setPlaylistsToTag([]);
   };
 
   // Selection handlers
@@ -359,7 +423,9 @@ function App() {
       <div className="action-bar">
         <button disabled>MERGE</button>
         <button disabled>RENAME</button>
-        <button disabled>TAG</button>
+        <button onClick={handleTagClick} disabled={!authenticated || selectedIds.size === 0}>
+          TAG
+        </button>
         <button disabled>SUBTRACT</button>
         <button disabled>INTERSECT</button>
         <button
@@ -381,6 +447,16 @@ function App() {
           onConfirm={handleDeleteConfirm}
           onCancel={handleDeleteCancel}
           deleting={deleting}
+        />
+      )}
+
+      {/* Tag modal */}
+      {showTagModal && (
+        <TagModal
+          playlists={playlistsToTag}
+          onConfirm={handleTagConfirm}
+          onCancel={handleTagCancel}
+          saving={savingTags}
         />
       )}
     </div>

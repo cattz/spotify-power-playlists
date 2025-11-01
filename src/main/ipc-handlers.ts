@@ -236,6 +236,53 @@ export function setupIpcHandlers(): void {
     }
   );
 
+  ipcMain.handle(
+    'playlist:update-tags',
+    async (
+      _event,
+      playlistIds: string[],
+      tags: string,
+      append: boolean
+    ): Promise<ApiResponse<{ updated: number }>> => {
+      try {
+        if (!database) {
+          throw new Error('Database not initialized');
+        }
+
+        let updated = 0;
+
+        for (const playlistId of playlistIds) {
+          const playlist = database.getPlaylistById(playlistId);
+          if (!playlist) continue;
+
+          let newTags = tags;
+
+          if (append && playlist.tags) {
+            // Append mode: combine existing and new tags, remove duplicates
+            const existingTags = playlist.tags.split(/\s+/).filter((t) => t.length > 0);
+            const newTagsArray = tags.split(/\s+/).filter((t) => t.length > 0);
+            const combinedTags = [...new Set([...existingTags, ...newTagsArray])];
+            newTags = combinedTags.join(' ');
+          }
+
+          database.updateTags(playlistId, newTags);
+          updated++;
+        }
+
+        return {
+          success: true,
+          data: { updated },
+        };
+      } catch (error) {
+        console.error('Update tags error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update tags',
+        };
+      }
+    }
+  );
+
   // TODO: Add more handlers as needed
   // - spotify:get-playlist-tracks
   // - spotify:create-playlist

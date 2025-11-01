@@ -428,3 +428,85 @@ button:disabled {
   background-color: var(--error);
   color: var(--bg-primary);
 }
+
+/* Form elements */
+.form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.text-input {
+  width: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-dim);
+  padding: var(--spacing-sm);
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.text-input:focus {
+  border-color: var(--border);
+}
+
+.text-input:disabled {
+  color: var(--text-tertiary);
+  border-color: var(--border-dim);
+}
+
+.radio-label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  cursor: pointer;
+  user-select: none;
+}
+
+.radio-label input[type='radio'] {
+  margin-right: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.radio-label:hover {
+  color: var(--text-primary);
+}
+
+.info-text {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+/* Tag suggestions */
+.tag-suggestions {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-dim);
+  padding: var(--spacing-md);
+  margin: var(--spacing-md) 0;
+}
+
+.tag-suggestions-label {
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.tag-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.tag-item {
+  padding: var(--spacing-xs) 0;
+  color: var(--text-primary);
+  font-size: 11px;
+}

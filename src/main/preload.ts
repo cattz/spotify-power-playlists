@@ -40,6 +40,12 @@ const api = {
       playlistIds: string[]
     ): Promise<ApiResponse<{ deleted: number; failed: string[] }>> =>
       ipcRenderer.invoke('playlist:delete', playlistIds),
+    updateTags: (
+      playlistIds: string[],
+      tags: string,
+      append: boolean
+    ): Promise<ApiResponse<{ updated: number }>> =>
+      ipcRenderer.invoke('playlist:update-tags', playlistIds, tags, append),
     // TODO: Add more playlist operation methods
     // merge: (config: MergeConfig) => ipcRenderer.invoke('playlist:merge', config),
     // subtract: (config: SubtractConfig) => ipcRenderer.invoke('playlist:subtract', config),
