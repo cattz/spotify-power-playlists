@@ -1,0 +1,233 @@
+/**
+ * Spotify Playlist Manager - Terminal Hacker Aesthetic
+ *
+ * Color scheme: Black background with bright green text
+ * Font: Monospace (Courier New / Fira Code)
+ * Design: Maximum information density, minimal animations
+ */
+
+:root {
+  /* Color palette */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-hover: #111111;
+  --bg-selected: #1a1a1a;
+
+  --text-primary: #0f0;
+  --text-secondary: #0a0;
+  --text-tertiary: #050;
+
+  --border: #0f0;
+  --border-dim: #333;
+
+  --error: #f00;
+  --warning: #ff0;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Courier New', 'Fira Code', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg-secondary);
+}
+
+.app-header h1 {
+  font-size: 14px;
+  font-weight: normal;
+  letter-spacing: 2px;
+}
+
+.status {
+  color: var(--text-secondary);
+}
+
+/* Search bar */
+.search-bar {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.search-input {
+  width: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-dim);
+  padding: var(--spacing-sm);
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--border);
+}
+
+/* Stats bar */
+.stats-bar {
+  display: flex;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-dim);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+/* Table container */
+.table-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-container {
+  text-align: center;
+  max-width: 500px;
+  padding: var(--spacing-xl);
+}
+
+.placeholder {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--text-tertiary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.auth-button {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  margin-top: var(--spacing-md);
+}
+
+.auth-button:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  box-shadow: 0 0 10px var(--border);
+}
+
+.auth-button:disabled {
+  color: var(--text-tertiary);
+  border-color: var(--border-dim);
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: var(--error);
+  margin-top: var(--spacing-md);
+  font-size: 11px;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0;
+  margin-left: var(--spacing-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.logout-btn:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+/* Action bar */
+.action-bar {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--border);
+  background-color: var(--bg-secondary);
+}
+
+button {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  transition: none;
+}
+
+button:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+button:active:not(:disabled) {
+  background-color: var(--bg-selected);
+}
+
+button:disabled {
+  color: var(--text-tertiary);
+  border-color: var(--border-dim);
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border: 2px solid var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Selection */
+::selection {
+  background: var(--bg-selected);
+  color: var(--text-primary);
+}
