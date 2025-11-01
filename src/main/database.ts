@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS playlists (
     modified_at TEXT,
     tags TEXT DEFAULT '',           -- Space-separated tags
     last_synced INTEGER DEFAULT 0,  -- Unix timestamp
-    snapshot_id TEXT                -- For change detection
+    snapshot_id TEXT,               -- For change detection
+    unlinked_count INTEGER DEFAULT 0 -- Number of unlinked/unavailable tracks
 );
 
 CREATE TABLE IF NOT EXISTS operation_history (
@@ -68,6 +69,14 @@ export class PlaylistDatabase {
     // Execute schema
     this.db.exec(SCHEMA_SQL);
 
+    // Migration: Add unlinked_count column if it doesn't exist
+    try {
+      this.db.exec(`ALTER TABLE playlists ADD COLUMN unlinked_count INTEGER DEFAULT 0`);
+      console.log('[Database] Added unlinked_count column');
+    } catch (err) {
+      // Column already exists, ignore
+    }
+
     // Enable WAL mode for better concurrency
     this.db.pragma('journal_mode = WAL');
   }
@@ -77,8 +86,8 @@ export class PlaylistDatabase {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO playlists (
         spotify_id, name, owner, track_count, duration_ms, followers,
-        is_owner, created_at, modified_at, tags, last_synced, snapshot_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        is_owner, created_at, modified_at, tags, last_synced, snapshot_id, unlinked_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -93,7 +102,8 @@ export class PlaylistDatabase {
       playlist.modified_at,
       playlist.tags,
       playlist.last_synced,
-      playlist.snapshot_id
+      playlist.snapshot_id,
+      playlist.unlinked_count || 0
     );
   }
 

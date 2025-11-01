@@ -665,7 +665,13 @@ function App() {
                     <div className="col-owner" style={{ color: playlist.is_owner ? '#0f0' : '#0a0' }}>
                       {playlist.is_owner ? 'you' : playlist.owner}
                     </div>
-                    <div className="col-unlinked">-</div>
+                    <div className="col-unlinked">
+                      {playlist.unlinked_count > 0 ? (
+                        <span style={{ color: 'var(--warning)' }}>⚠ {playlist.unlinked_count}</span>
+                      ) : (
+                        '-'
+                      )}
+                    </div>
                     <div className="col-tags">{playlist.tags || '-'}</div>
                   </div>
                 );

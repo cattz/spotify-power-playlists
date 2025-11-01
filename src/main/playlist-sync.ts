@@ -79,12 +79,16 @@ export class PlaylistSyncService {
             const response = await this.spotifyApi.getPlaylist(id);
             const playlist = response.body;
 
-            // Calculate total duration
+            // Calculate total duration and count unlinked tracks
             let duration = 0;
+            let unlinkedCount = 0;
             if (playlist.tracks.items) {
               for (const item of playlist.tracks.items) {
-                if (item.track) {
-                  duration += item.track.duration_ms || 0;
+                if (item.track && item.track.duration_ms) {
+                  duration += item.track.duration_ms;
+                } else {
+                  // Track is null or unavailable
+                  unlinkedCount++;
                 }
               }
             }
@@ -92,7 +96,8 @@ export class PlaylistSyncService {
             const localPlaylist = this.convertToLocalPlaylist(
               playlist,
               currentUserId,
-              duration
+              duration,
+              unlinkedCount
             );
             this.database.upsertPlaylist(localPlaylist);
           } catch (error) {
@@ -146,12 +151,16 @@ export class PlaylistSyncService {
             const response = await this.spotifyApi.getPlaylist(id);
             const playlist = response.body;
 
-            // Calculate total duration
+            // Calculate total duration and count unlinked tracks
             let duration = 0;
+            let unlinkedCount = 0;
             if (playlist.tracks.items) {
               for (const item of playlist.tracks.items) {
-                if (item.track) {
-                  duration += item.track.duration_ms || 0;
+                if (item.track && item.track.duration_ms) {
+                  duration += item.track.duration_ms;
+                } else {
+                  // Track is null or unavailable
+                  unlinkedCount++;
                 }
               }
             }
@@ -159,7 +168,8 @@ export class PlaylistSyncService {
             const localPlaylist = this.convertToLocalPlaylist(
               playlist,
               currentUserId,
-              duration
+              duration,
+              unlinkedCount
             );
             this.database.upsertPlaylist(localPlaylist);
             synced++;
@@ -206,7 +216,8 @@ export class PlaylistSyncService {
   private convertToLocalPlaylist(
     spotifyPlaylist: any,
     currentUserId: string,
-    duration?: number
+    duration?: number,
+    unlinkedCount?: number
   ): LocalPlaylist {
     const isOwner = spotifyPlaylist.owner?.id === currentUserId;
 
@@ -223,6 +234,7 @@ export class PlaylistSyncService {
       tags: '',
       last_synced: Date.now(),
       snapshot_id: spotifyPlaylist.snapshot_id,
+      unlinked_count: unlinkedCount || 0,
     };
   }
 

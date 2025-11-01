@@ -53,6 +53,7 @@ export interface LocalPlaylist {
   tags: string;
   last_synced: number;
   snapshot_id: string;
+  unlinked_count: number;
 }
 
 export interface OperationHistory {
