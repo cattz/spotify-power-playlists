@@ -11,6 +11,7 @@ import { SpotifyAuth } from './auth';
 import { PlaylistDatabase } from './database';
 import { PlaylistSyncService } from './playlist-sync';
 import { PlaylistOperations } from './playlist-operations';
+import { checkRateLimit, logRateLimit } from './rate-limit-handler';
 
 let spotifyAuth: SpotifyAuth | null = null;
 let database: PlaylistDatabase | null = null;
@@ -140,6 +141,17 @@ export function setupIpcHandlers(): void {
         return { success: true, data: result };
       } catch (error) {
         console.error('Playlist sync error:', error);
+
+        // Check if this is a rate limit error
+        const rateLimitInfo = checkRateLimit(error);
+        if (rateLimitInfo.isRateLimited) {
+          logRateLimit(rateLimitInfo);
+          return {
+            success: false,
+            error: rateLimitInfo.message || 'Spotify API rate limit exceeded',
+          };
+        }
+
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to sync playlists',
@@ -174,6 +186,17 @@ export function setupIpcHandlers(): void {
         return { success: true, data: result };
       } catch (error) {
         console.error('Background detail sync error:', error);
+
+        // Check if this is a rate limit error
+        const rateLimitInfo = checkRateLimit(error);
+        if (rateLimitInfo.isRateLimited) {
+          logRateLimit(rateLimitInfo);
+          return {
+            success: false,
+            error: rateLimitInfo.message || 'Spotify API rate limit exceeded',
+          };
+        }
+
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to sync playlist details',
@@ -386,6 +409,17 @@ export function setupIpcHandlers(): void {
         };
       } catch (error) {
         console.error('Merge playlists error:', error);
+
+        // Check if this is a rate limit error
+        const rateLimitInfo = checkRateLimit(error);
+        if (rateLimitInfo.isRateLimited) {
+          logRateLimit(rateLimitInfo);
+          return {
+            success: false,
+            error: rateLimitInfo.message || 'Spotify API rate limit exceeded',
+          };
+        }
+
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to merge playlists',
@@ -443,6 +477,17 @@ export function setupIpcHandlers(): void {
         };
       } catch (error) {
         console.error('Fix broken tracks error:', error);
+
+        // Check if this is a rate limit error
+        const rateLimitInfo = checkRateLimit(error);
+        if (rateLimitInfo.isRateLimited) {
+          logRateLimit(rateLimitInfo);
+          return {
+            success: false,
+            error: rateLimitInfo.message || 'Spotify API rate limit exceeded',
+          };
+        }
+
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to fix broken tracks',
@@ -500,6 +545,17 @@ export function setupIpcHandlers(): void {
         };
       } catch (error) {
         console.error('Remove duplicates error:', error);
+
+        // Check if this is a rate limit error
+        const rateLimitInfo = checkRateLimit(error);
+        if (rateLimitInfo.isRateLimited) {
+          logRateLimit(rateLimitInfo);
+          return {
+            success: false,
+            error: rateLimitInfo.message || 'Spotify API rate limit exceeded',
+          };
+        }
+
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to remove duplicates',
