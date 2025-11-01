@@ -6,6 +6,9 @@
 import SpotifyWebApi from 'spotify-web-api-node';
 import { PlaylistDatabase } from './database';
 import type { LocalPlaylist } from '@shared/types';
+import { app } from 'electron';
+import { join } from 'path';
+import { writeFileSync } from 'fs';
 
 export class PlaylistOperations {
   constructor(
@@ -336,19 +339,30 @@ export class PlaylistOperations {
 
       // Attempt to recover each unlinked track
       const recoveredUris: string[] = [];
-      let failedCount = 0;
+      const failedTracks: Array<{
+        trackName: string;
+        artistName: string;
+        uri: string;
+        reason: string;
+      }> = [];
 
       for (const item of unlinkedTracks) {
         // Try to extract track info from the item
         const trackName = item.track?.name || 'Unknown';
         const artistName =
           item.track?.artists?.[0]?.name || item.track?.album?.artists?.[0]?.name || 'Unknown';
+        const uri = item.track?.uri || '';
 
         console.log(`[Fix Broken Tracks] Attempting to recover: "${trackName}" by ${artistName}`);
 
         if (trackName === 'Unknown' || artistName === 'Unknown') {
           console.log(`[Fix Broken Tracks] Insufficient info, skipping`);
-          failedCount++;
+          failedTracks.push({
+            trackName,
+            artistName,
+            uri,
+            reason: 'Insufficient metadata (track name or artist unknown)',
+          });
           continue;
         }
 
@@ -370,11 +384,21 @@ export class PlaylistOperations {
             recoveredUris.push(bestMatch.uri);
           } else {
             console.log(`[Fix Broken Tracks] ✗ No matches found`);
-            failedCount++;
+            failedTracks.push({
+              trackName,
+              artistName,
+              uri,
+              reason: 'No matches found on Spotify',
+            });
           }
         } catch (error) {
           console.error(`[Fix Broken Tracks] Search failed:`, error);
-          failedCount++;
+          failedTracks.push({
+            trackName,
+            artistName,
+            uri,
+            reason: `Search error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
         }
 
         // Add a small delay to avoid rate limiting
@@ -382,15 +406,55 @@ export class PlaylistOperations {
       }
 
       console.log(
-        `[Fix Broken Tracks] Recovery complete: ${recoveredUris.length} recovered, ${failedCount} failed`
+        `[Fix Broken Tracks] Recovery complete: ${recoveredUris.length} recovered, ${failedTracks.length} failed`
       );
+
+      // Export failed tracks to CSV
+      let exportFilePath: string | undefined;
+      if (failedTracks.length > 0) {
+        try {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+          const sanitizedPlaylistName = playlistName.replace(/[^a-z0-9]/gi, '_');
+          const fileName = `${sanitizedPlaylistName}_failed_tracks_${timestamp}.csv`;
+          exportFilePath = join(app.getPath('desktop'), fileName);
+
+          // Create CSV content
+          const csvHeader = 'Track Name,Artist Name,Original URI,Reason\n';
+          const csvRows = failedTracks
+            .map((track) => {
+              // Escape commas and quotes in CSV
+              const escapeCsv = (str: string) => {
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                  return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+              };
+
+              return [
+                escapeCsv(track.trackName),
+                escapeCsv(track.artistName),
+                escapeCsv(track.uri),
+                escapeCsv(track.reason),
+              ].join(',');
+            })
+            .join('\n');
+
+          const csvContent = csvHeader + csvRows;
+          writeFileSync(exportFilePath, csvContent, 'utf-8');
+
+          console.log(`[Fix Broken Tracks] Exported ${failedTracks.length} failed tracks to: ${exportFilePath}`);
+        } catch (error) {
+          console.error('[Fix Broken Tracks] Failed to export CSV:', error);
+          exportFilePath = undefined;
+        }
+      }
 
       if (recoveredUris.length === 0) {
         return {
           success: false,
           total: unlinkedTracks.length,
           recovered: 0,
-          failed: failedCount,
+          failed: failedTracks.length,
           error: 'No tracks could be recovered',
         };
       }
@@ -425,7 +489,7 @@ export class PlaylistOperations {
         playlistId: newPlaylistId,
         total: unlinkedTracks.length,
         recovered: recoveredUris.length,
-        failed: failedCount,
+        failed: failedTracks.length,
       };
     } catch (error) {
       console.error('[Fix Broken Tracks] Failed:', error);

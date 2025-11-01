@@ -465,18 +465,34 @@ function App() {
       const result = await window.electronAPI.playlists.fixBrokenLinks(playlist.spotify_id);
 
       if (result.success && result.data) {
-        console.log(
-          `[Fix Broken Links] Recovered ${result.data.recovered}/${result.data.total} tracks`
-        );
+        const { recovered, total, failed } = result.data;
+        console.log(`[Fix Broken Links] Recovered ${recovered}/${total} tracks`);
         console.log(`[Fix Broken Links] New playlist: ${result.data.playlistId}`);
+
+        if (failed > 0) {
+          console.log(
+            `[Fix Broken Links] ${failed} tracks could not be recovered. ` +
+            `A CSV file with the failed tracks has been exported to your Desktop.`
+          );
+          alert(
+            `Fixed Broken Links:\n\n` +
+            `✓ Recovered: ${recovered} tracks\n` +
+            `✗ Failed: ${failed} tracks\n\n` +
+            `A CSV file with the failed tracks has been saved to your Desktop.`
+          );
+        } else {
+          alert(`Successfully recovered all ${recovered} tracks!`);
+        }
 
         // Refresh playlist list
         await refreshPlaylists();
       } else {
         console.error('[Fix Broken Links] Failed:', result.error);
+        alert(`Failed to fix broken links: ${result.error}`);
       }
     } catch (err) {
       console.error('[Fix Broken Links] Error:', err);
+      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
