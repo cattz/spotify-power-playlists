@@ -144,9 +144,10 @@ export class PlaylistSyncService {
     const currentUserId = await this.getCurrentUserId();
     const playlistIds = playlistsToSync.map((p) => p.spotify_id);
 
-    // Process in small batches with delays (5 playlists per batch, 2 second delay)
+    // Process in small batches with delays (5 playlists per batch, 5 second delay)
+    // Increased delay to avoid Spotify rate limits
     const BATCH_SIZE = 5;
-    const DELAY_MS = 2000;
+    const DELAY_MS = 5000;
 
     const batches = this.chunkArray(playlistIds, BATCH_SIZE);
     let synced = 0;
