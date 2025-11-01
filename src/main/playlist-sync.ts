@@ -19,6 +19,9 @@ export class PlaylistSyncService {
    * Sync all playlists from Spotify to local database
    */
   async syncAllPlaylists(): Promise<{ total: number; synced: number }> {
+    // Get current user ID for ownership checks
+    const currentUserId = await this.getCurrentUserId();
+
     let allPlaylists: LocalPlaylist[] = [];
     let offset = 0;
     const limit = SPOTIFY_API_LIMITS.PLAYLISTS_PER_REQUEST;
@@ -40,7 +43,7 @@ export class PlaylistSyncService {
 
       // Convert to local playlist format
       for (const item of items) {
-        const localPlaylist = this.convertToLocalPlaylist(item);
+        const localPlaylist = this.convertToLocalPlaylist(item, currentUserId);
         allPlaylists.push(localPlaylist);
       }
 
@@ -63,6 +66,9 @@ export class PlaylistSyncService {
    * Sync detailed information for specific playlists
    */
   async syncPlaylistDetails(playlistIds: string[]): Promise<void> {
+    // Get current user ID for ownership checks
+    const currentUserId = await this.getCurrentUserId();
+
     // Fetch in batches to respect API limits
     const batches = this.chunkArray(playlistIds, SPOTIFY_API_LIMITS.MAX_CONCURRENT_REQUESTS);
 
@@ -83,7 +89,11 @@ export class PlaylistSyncService {
               }
             }
 
-            const localPlaylist = this.convertToLocalPlaylist(playlist, duration);
+            const localPlaylist = this.convertToLocalPlaylist(
+              playlist,
+              currentUserId,
+              duration
+            );
             this.database.upsertPlaylist(localPlaylist);
           } catch (error) {
             console.error(`Failed to sync playlist ${id}:`, error);
@@ -98,10 +108,9 @@ export class PlaylistSyncService {
    */
   private convertToLocalPlaylist(
     spotifyPlaylist: any,
+    currentUserId: string,
     duration?: number
   ): LocalPlaylist {
-    // Get current user ID from API
-    const currentUserId = this.spotifyApi.getAccessToken() ? '' : ''; // Will be set properly
     const isOwner = spotifyPlaylist.owner?.id === currentUserId;
 
     return {
