@@ -6,6 +6,7 @@ import { useSelection } from './hooks/useSelection';
 import { filterPlaylists } from './utils/filterPlaylists';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import { TagModal } from './components/TagModal';
+import { MergeModal } from './components/MergeModal';
 import { ContextMenu } from './components/ContextMenu';
 import { UI_CONSTANTS } from '@shared/constants';
 import type { LocalPlaylist } from '@shared/types';
@@ -43,6 +44,11 @@ function App() {
   const [showTagModal, setShowTagModal] = useState(false);
   const [playlistsToTag, setPlaylistsToTag] = useState<LocalPlaylist[]>([]);
   const [savingTags, setSavingTags] = useState(false);
+
+  // Merge modal state
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [playlistsToMerge, setPlaylistsToMerge] = useState<LocalPlaylist[]>([]);
+  const [merging, setMerging] = useState(false);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -130,6 +136,14 @@ function App() {
         e.preventDefault();
         if (selectedIds.size > 0) {
           handleTagClick();
+        }
+      }
+
+      // Cmd/Ctrl + M to merge playlists
+      if ((e.metaKey || e.ctrlKey) && e.key === 'm') {
+        e.preventDefault();
+        if (selectedIds.size >= 2) {
+          handleMergeClick();
         }
       }
 
@@ -325,6 +339,64 @@ function App() {
   const handleTagCancel = () => {
     setShowTagModal(false);
     setPlaylistsToTag([]);
+  };
+
+  // Merge handlers
+  const handleMergeClick = async () => {
+    if (selectedIds.size < 2) {
+      return;
+    }
+
+    // Get details for selected playlists
+    const selectedPlaylistIds = Array.from(selectedIds);
+    const result = await window.electronAPI.playlists.getDetails(selectedPlaylistIds);
+
+    if (result.success && result.data) {
+      setPlaylistsToMerge(result.data);
+      setShowMergeModal(true);
+    }
+  };
+
+  const handleMergeConfirm = async (
+    targetName: string,
+    removeDuplicates: boolean,
+    deleteSource: boolean
+  ) => {
+    setMerging(true);
+
+    try {
+      const selectedPlaylistIds = playlistsToMerge.map((p) => p.spotify_id);
+      const result = await window.electronAPI.playlists.merge(
+        selectedPlaylistIds,
+        targetName,
+        removeDuplicates,
+        deleteSource
+      );
+
+      if (result.success && result.data) {
+        console.log(
+          `Merged ${selectedPlaylistIds.length} playlists into "${targetName}" (${result.data.trackCount} tracks)`
+        );
+
+        // Clear selection and close modal
+        clearSelection();
+        setShowMergeModal(false);
+
+        // Refresh playlist list to show new merged playlist
+        await refreshPlaylists();
+      } else {
+        console.error('Merge failed:', result.error);
+      }
+    } catch (err) {
+      console.error('Merge error:', err);
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const handleMergeCancel = () => {
+    setShowMergeModal(false);
+    setPlaylistsToMerge([]);
   };
 
   // Context menu handlers
@@ -604,7 +676,12 @@ function App() {
       </div>
 
       <div className="action-bar">
-        <button disabled>MERGE</button>
+        <button
+          onClick={handleMergeClick}
+          disabled={!authenticated || selectedIds.size < 2}
+        >
+          MERGE
+        </button>
         <button disabled>RENAME</button>
         <button onClick={handleTagClick} disabled={!authenticated || selectedIds.size === 0}>
           TAG
@@ -640,6 +717,16 @@ function App() {
           onConfirm={handleTagConfirm}
           onCancel={handleTagCancel}
           saving={savingTags}
+        />
+      )}
+
+      {/* Merge modal */}
+      {showMergeModal && (
+        <MergeModal
+          playlists={playlistsToMerge}
+          onConfirm={handleMergeConfirm}
+          onCancel={handleMergeCancel}
+          merging={merging}
         />
       )}
 

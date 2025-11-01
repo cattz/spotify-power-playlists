@@ -49,9 +49,16 @@ const api = {
       append: boolean
     ): Promise<ApiResponse<{ updated: number }>> =>
       ipcRenderer.invoke('playlist:update-tags', playlistIds, tags, append),
+    merge: (
+      playlistIds: string[],
+      targetName: string,
+      removeDuplicates: boolean,
+      deleteSource: boolean
+    ): Promise<ApiResponse<{ playlistId: string; trackCount: number }>> =>
+      ipcRenderer.invoke('playlist:merge', playlistIds, targetName, removeDuplicates, deleteSource),
     // TODO: Add more playlist operation methods
-    // merge: (config: MergeConfig) => ipcRenderer.invoke('playlist:merge', config),
     // subtract: (config: SubtractConfig) => ipcRenderer.invoke('playlist:subtract', config),
+    // intersect: (config: IntersectConfig) => ipcRenderer.invoke('playlist:intersect', config),
     // etc.
   },
 };

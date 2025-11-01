@@ -333,11 +333,71 @@ export function setupIpcHandlers(): void {
     }
   );
 
+  // Playlist merge handler
+  ipcMain.handle(
+    'playlist:merge',
+    async (
+      _event,
+      playlistIds: string[],
+      targetName: string,
+      removeDuplicates: boolean,
+      deleteSource: boolean
+    ): Promise<
+      ApiResponse<{
+        playlistId: string;
+        trackCount: number;
+      }>
+    > => {
+      try {
+        if (!operations) {
+          throw new Error('Operations service not initialized');
+        }
+
+        if (!spotifyAuth) {
+          throw new Error('Spotify auth not initialized');
+        }
+
+        // Ensure we have a valid access token
+        const accessToken = await spotifyAuth.getAccessToken();
+        if (!accessToken) {
+          throw new Error('Not authenticated');
+        }
+
+        const result = await operations.mergePlaylists(
+          playlistIds,
+          targetName,
+          removeDuplicates,
+          deleteSource
+        );
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error,
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            playlistId: result.playlistId!,
+            trackCount: result.trackCount!,
+          },
+        };
+      } catch (error) {
+        console.error('Merge playlists error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to merge playlists',
+        };
+      }
+    }
+  );
+
   // TODO: Add more handlers as needed
   // - spotify:get-playlist-tracks
   // - spotify:create-playlist
   // - spotify:rename-playlist
-  // - playlist:merge
   // - playlist:subtract
   // - playlist:intersect
 }
