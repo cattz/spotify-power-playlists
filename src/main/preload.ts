@@ -34,6 +34,9 @@ const api = {
   playlists: {
     sync: (): Promise<ApiResponse<{ total: number; synced: number }>> =>
       ipcRenderer.invoke('playlist:sync'),
+    syncDetailsBackground: (): Promise<
+      ApiResponse<{ total: number; synced: number; failed: number }>
+    > => ipcRenderer.invoke('playlist:sync-details-background'),
     getDetails: (playlistIds: string[]): Promise<ApiResponse<any[]>> =>
       ipcRenderer.invoke('playlist:get-details', playlistIds),
     delete: (

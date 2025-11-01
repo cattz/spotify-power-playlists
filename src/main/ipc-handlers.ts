@@ -121,12 +121,62 @@ export function setupIpcHandlers(): void {
 
         const result = await syncService.syncAllPlaylists();
 
+        // Start background detail sync after main sync completes
+        if (result.synced > 0) {
+          console.log('[Sync] Starting background detail fetch...');
+          // Run in background without awaiting
+          syncService
+            .syncPlaylistDetailsBackground()
+            .then((bgResult) => {
+              console.log(
+                `[Sync] Background detail fetch complete: ${bgResult.synced}/${bgResult.total} playlists`
+              );
+            })
+            .catch((error) => {
+              console.error('[Sync] Background detail fetch error:', error);
+            });
+        }
+
         return { success: true, data: result };
       } catch (error) {
         console.error('Playlist sync error:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to sync playlists',
+        };
+      }
+    }
+  );
+
+  // Background detail sync handler (manual trigger)
+  ipcMain.handle(
+    'playlist:sync-details-background',
+    async (): Promise<
+      ApiResponse<{ total: number; synced: number; failed: number }>
+    > => {
+      try {
+        if (!syncService) {
+          throw new Error('Sync service not initialized');
+        }
+
+        if (!spotifyAuth) {
+          throw new Error('Spotify auth not initialized');
+        }
+
+        // Ensure we have a valid access token
+        const accessToken = await spotifyAuth.getAccessToken();
+        if (!accessToken) {
+          throw new Error('Not authenticated');
+        }
+
+        const result = await syncService.syncPlaylistDetailsBackground();
+
+        return { success: true, data: result };
+      } catch (error) {
+        console.error('Background detail sync error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to sync playlist details',
         };
       }
     }

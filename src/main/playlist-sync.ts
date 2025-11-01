@@ -104,6 +104,103 @@ export class PlaylistSyncService {
   }
 
   /**
+   * Background job to fetch playlist details slowly to avoid rate limiting
+   * Fetches playlists in small batches with delays between them
+   */
+  async syncPlaylistDetailsBackground(
+    progressCallback?: (current: number, total: number) => void
+  ): Promise<{ total: number; synced: number; failed: number }> {
+    // Get all playlists from database
+    const allPlaylists = this.database.getAllPlaylists();
+
+    // Filter playlists that don't have duration data yet
+    const playlistsToSync = allPlaylists.filter((p) => p.duration_ms === 0);
+
+    console.log(
+      `[Background Sync] Starting background detail fetch for ${playlistsToSync.length} playlists`
+    );
+
+    if (playlistsToSync.length === 0) {
+      console.log('[Background Sync] All playlists already have duration data');
+      return { total: 0, synced: 0, failed: 0 };
+    }
+
+    const currentUserId = await this.getCurrentUserId();
+    const playlistIds = playlistsToSync.map((p) => p.spotify_id);
+
+    // Process in small batches with delays (5 playlists per batch, 2 second delay)
+    const BATCH_SIZE = 5;
+    const DELAY_MS = 2000;
+
+    const batches = this.chunkArray(playlistIds, BATCH_SIZE);
+    let synced = 0;
+    let failed = 0;
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+
+      // Process batch
+      await Promise.all(
+        batch.map(async (id) => {
+          try {
+            const response = await this.spotifyApi.getPlaylist(id);
+            const playlist = response.body;
+
+            // Calculate total duration
+            let duration = 0;
+            if (playlist.tracks.items) {
+              for (const item of playlist.tracks.items) {
+                if (item.track) {
+                  duration += item.track.duration_ms || 0;
+                }
+              }
+            }
+
+            const localPlaylist = this.convertToLocalPlaylist(
+              playlist,
+              currentUserId,
+              duration
+            );
+            this.database.upsertPlaylist(localPlaylist);
+            synced++;
+          } catch (error) {
+            console.error(`[Background Sync] Failed to sync playlist ${id}:`, error);
+            failed++;
+          }
+        })
+      );
+
+      // Report progress
+      const current = (i + 1) * BATCH_SIZE;
+      if (progressCallback) {
+        progressCallback(Math.min(current, playlistIds.length), playlistIds.length);
+      }
+
+      console.log(
+        `[Background Sync] Progress: ${Math.min(current, playlistIds.length)}/${playlistIds.length}`
+      );
+
+      // Delay between batches (except for the last one)
+      if (i < batches.length - 1) {
+        await this.delay(DELAY_MS);
+      }
+    }
+
+    console.log(
+      `[Background Sync] Completed. Synced: ${synced}, Failed: ${failed}, Total: ${playlistIds.length}`
+    );
+
+    return { total: playlistIds.length, synced, failed };
+  }
+
+  /**
+   * Helper to delay execution
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
    * Convert Spotify playlist to local format
    */
   private convertToLocalPlaylist(
