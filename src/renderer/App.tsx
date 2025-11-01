@@ -29,6 +29,11 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Filter and sort state
+  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'others'>('all');
+  const [sortColumn, setSortColumn] = useState<keyof LocalPlaylist>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [playlistsToDelete, setPlaylistsToDelete] = useState<LocalPlaylist[]>([]);
@@ -72,8 +77,32 @@ function App() {
 
   // Filter playlists based on search
   const filterResult = filterPlaylists(playlists, debouncedSearch);
-  const filteredPlaylists = filterResult.playlists;
+  let filteredPlaylists = filterResult.playlists;
   const searchError = filterResult.error;
+
+  // Apply ownership filter
+  if (ownershipFilter === 'mine') {
+    filteredPlaylists = filteredPlaylists.filter((p) => p.is_owner);
+  } else if (ownershipFilter === 'others') {
+    filteredPlaylists = filteredPlaylists.filter((p) => !p.is_owner);
+  }
+
+  // Sort playlists
+  filteredPlaylists = [...filteredPlaylists].sort((a, b) => {
+    const aVal = a[sortColumn];
+    const bVal = b[sortColumn];
+
+    let comparison = 0;
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      comparison = aVal.localeCompare(bVal);
+    } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+      comparison = aVal - bVal;
+    } else if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+      comparison = aVal === bVal ? 0 : aVal ? -1 : 1;
+    }
+
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
 
   // Check authentication status on mount
   useEffect(() => {
@@ -158,6 +187,40 @@ function App() {
 
   const handleSync = async () => {
     await syncPlaylists();
+  };
+
+  // Header checkbox handler (select all visible)
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredPlaylists.length && filteredPlaylists.length > 0) {
+      // All visible are selected, deselect all
+      clearSelection();
+    } else {
+      // Select all visible
+      const allIds = filteredPlaylists.map((p) => p.spotify_id);
+      selectAll(allIds);
+    }
+  };
+
+  // Sort column handler
+  const handleSort = (column: keyof LocalPlaylist) => {
+    if (sortColumn === column) {
+      // Toggle direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to ascending
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Format duration helper
+  const formatDuration = (ms: number): string => {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
   };
 
   // Delete handlers
@@ -408,6 +471,30 @@ function App() {
         <span>Total tracks: {totalTracks.toLocaleString()}</span>
         <span>Total duration: {durationHours}h {durationMinutes}m</span>
         <span>Avg: {avgTracks} tracks/playlist</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+          <span>Show:</span>
+          <button
+            className={`filter-toggle ${ownershipFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setOwnershipFilter('all')}
+            disabled={!authenticated}
+          >
+            All
+          </button>
+          <button
+            className={`filter-toggle ${ownershipFilter === 'mine' ? 'active' : ''}`}
+            onClick={() => setOwnershipFilter('mine')}
+            disabled={!authenticated}
+          >
+            Mine
+          </button>
+          <button
+            className={`filter-toggle ${ownershipFilter === 'others' ? 'active' : ''}`}
+            onClick={() => setOwnershipFilter('others')}
+            disabled={!authenticated}
+          >
+            Others
+          </button>
+        </div>
       </div>
 
       <div className="table-container">
@@ -448,11 +535,38 @@ function App() {
           <div className="playlist-list">
             <div className="playlist-table">
               <div className="table-header">
-                <div className="col-checkbox">[ ]</div>
-                <div className="col-name">NAME</div>
-                <div className="col-tracks">TRACKS</div>
-                <div className="col-owner">OWNER</div>
-                <div className="col-modified">MODIFIED</div>
+                <div
+                  className="col-checkbox sortable-header"
+                  onClick={handleSelectAll}
+                  title="Select all visible"
+                >
+                  {selectedIds.size === filteredPlaylists.length && filteredPlaylists.length > 0 ? '[x]' : '[ ]'}
+                </div>
+                <div
+                  className="col-name sortable-header"
+                  onClick={() => handleSort('name')}
+                >
+                  NAME {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </div>
+                <div
+                  className="col-tracks sortable-header"
+                  onClick={() => handleSort('track_count')}
+                >
+                  TRACKS {sortColumn === 'track_count' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </div>
+                <div
+                  className="col-duration sortable-header"
+                  onClick={() => handleSort('duration_ms')}
+                >
+                  DURATION {sortColumn === 'duration_ms' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </div>
+                <div
+                  className="col-owner sortable-header"
+                  onClick={() => handleSort('owner')}
+                >
+                  OWNER {sortColumn === 'owner' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </div>
+                <div className="col-unlinked">⚠</div>
                 <div className="col-tags">TAGS</div>
               </div>
               {filteredPlaylists.map((playlist) => {
@@ -472,10 +586,11 @@ function App() {
                     </div>
                     <div className="col-name">{playlist.name}</div>
                     <div className="col-tracks">{playlist.track_count}</div>
+                    <div className="col-duration">{formatDuration(playlist.duration_ms)}</div>
                     <div className="col-owner" style={{ color: playlist.is_owner ? '#0f0' : '#0a0' }}>
                       {playlist.is_owner ? 'you' : playlist.owner}
                     </div>
-                    <div className="col-modified">-</div>
+                    <div className="col-unlinked">-</div>
                     <div className="col-tags">{playlist.tags || '-'}</div>
                   </div>
                 );
