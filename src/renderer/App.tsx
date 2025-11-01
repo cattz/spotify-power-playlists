@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import './styles/app.css';
 import { usePlaylists } from './hooks/usePlaylists';
+import { useDebounce } from './hooks/useDebounce';
+import { filterPlaylists } from './utils/filterPlaylists';
+import { UI_CONSTANTS } from '@shared/constants';
 
 /**
  * Main application component
@@ -18,6 +21,8 @@ function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Playlist management
   const {
@@ -28,9 +33,31 @@ function App() {
     syncPlaylists,
   } = usePlaylists();
 
+  // Debounce search query
+  const debouncedSearch = useDebounce(searchQuery, UI_CONSTANTS.SEARCH_DEBOUNCE_MS);
+
+  // Filter playlists based on search
+  const filterResult = filterPlaylists(playlists, debouncedSearch);
+  const filteredPlaylists = filterResult.playlists;
+  const searchError = filterResult.error;
+
   // Check authentication status on mount
   useEffect(() => {
     checkAuthStatus();
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + F to focus search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const checkAuthStatus = async () => {
@@ -79,12 +106,12 @@ function App() {
     await syncPlaylists();
   };
 
-  // Calculate stats
-  const totalTracks = playlists.reduce((sum, p) => sum + p.track_count, 0);
-  const totalDuration = playlists.reduce((sum, p) => sum + p.duration_ms, 0);
+  // Calculate stats (use filtered playlists for visible stats)
+  const totalTracks = filteredPlaylists.reduce((sum, p) => sum + p.track_count, 0);
+  const totalDuration = filteredPlaylists.reduce((sum, p) => sum + p.duration_ms, 0);
   const durationHours = Math.floor(totalDuration / (1000 * 60 * 60));
   const durationMinutes = Math.floor((totalDuration % (1000 * 60 * 60)) / (1000 * 60));
-  const avgTracks = playlists.length > 0 ? (totalTracks / playlists.length).toFixed(1) : '0';
+  const avgTracks = filteredPlaylists.length > 0 ? (totalTracks / filteredPlaylists.length).toFixed(1) : '0';
 
   return (
     <div className="app">
@@ -106,15 +133,21 @@ function App() {
 
       <div className="search-bar">
         <input
+          ref={searchInputRef}
           type="text"
           placeholder="Search playlists (supports regex)..."
-          className="search-input"
+          className={`search-input ${searchError ? 'search-error' : ''}`}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           disabled={!authenticated}
         />
+        {searchError && (
+          <span className="search-error-message">{searchError}</span>
+        )}
       </div>
 
       <div className="stats-bar">
-        <span>Showing {playlists.length} of {playlists.length} playlists</span>
+        <span>Showing {filteredPlaylists.length} of {playlists.length} playlists</span>
         <span>0 selected</span>
         <span>Total tracks: {totalTracks.toLocaleString()}</span>
         <span>Total duration: {durationHours}h {durationMinutes}m</span>
@@ -149,6 +182,12 @@ function App() {
               {syncing ? 'Syncing from Spotify...' : 'Sync Playlists from Spotify'}
             </button>
           </div>
+        ) : filteredPlaylists.length === 0 && searchQuery ? (
+          <div className="auth-container">
+            <p className="placeholder">
+              No playlists match "{searchQuery}"
+            </p>
+          </div>
         ) : (
           <div className="playlist-list">
             <div className="playlist-table">
@@ -160,7 +199,7 @@ function App() {
                 <div className="col-modified">MODIFIED</div>
                 <div className="col-tags">TAGS</div>
               </div>
-              {playlists.map((playlist) => (
+              {filteredPlaylists.map((playlist) => (
                 <div key={playlist.spotify_id} className="table-row">
                   <div className="col-checkbox">[ ]</div>
                   <div className="col-name">{playlist.name}</div>
