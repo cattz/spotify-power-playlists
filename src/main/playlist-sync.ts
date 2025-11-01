@@ -84,11 +84,22 @@ export class PlaylistSyncService {
             let unlinkedCount = 0;
             if (playlist.tracks.items) {
               for (const item of playlist.tracks.items) {
-                if (item.track && item.track.duration_ms) {
-                  duration += item.track.duration_ms;
-                } else {
-                  // Track is null or unavailable
+                // Check if track is unlinked/unavailable
+                // Track can be unlinked in several ways:
+                // 1. track is null
+                // 2. track.id is null (removed from catalog)
+                // 3. track.is_playable is false (regional restrictions or removed)
+                // 4. track.uri is missing
+                const isUnlinked =
+                  !item.track ||
+                  item.track.id === null ||
+                  item.track.is_playable === false ||
+                  !item.track.uri;
+
+                if (isUnlinked) {
                   unlinkedCount++;
+                } else if (item.track.duration_ms) {
+                  duration += item.track.duration_ms;
                 }
               }
             }
@@ -156,11 +167,22 @@ export class PlaylistSyncService {
             let unlinkedCount = 0;
             if (playlist.tracks.items) {
               for (const item of playlist.tracks.items) {
-                if (item.track && item.track.duration_ms) {
-                  duration += item.track.duration_ms;
-                } else {
-                  // Track is null or unavailable
+                // Check if track is unlinked/unavailable
+                // Track can be unlinked in several ways:
+                // 1. track is null
+                // 2. track.id is null (removed from catalog)
+                // 3. track.is_playable is false (regional restrictions or removed)
+                // 4. track.uri is missing
+                const isUnlinked =
+                  !item.track ||
+                  item.track.id === null ||
+                  item.track.is_playable === false ||
+                  !item.track.uri;
+
+                if (isUnlinked) {
                   unlinkedCount++;
+                } else if (item.track.duration_ms) {
+                  duration += item.track.duration_ms;
                 }
               }
             }

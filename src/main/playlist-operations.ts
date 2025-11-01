@@ -266,4 +266,173 @@ export class PlaylistOperations {
       };
     }
   }
+
+  /**
+   * Fix broken/unlinked tracks in a playlist
+   * Attempts to find replacement tracks by searching Spotify
+   */
+  async fixBrokenTracks(playlistId: string): Promise<{
+    success: boolean;
+    playlistId?: string;
+    total?: number;
+    recovered?: number;
+    failed?: number;
+    error?: string;
+  }> {
+    try {
+      console.log(`[Fix Broken Tracks] Starting for playlist ${playlistId}`);
+
+      // Get playlist details
+      const playlistResponse = await this.spotifyApi.getPlaylist(playlistId);
+      const playlist = playlistResponse.body;
+      const playlistName = playlist.name;
+
+      console.log(`[Fix Broken Tracks] Playlist: ${playlistName}`);
+
+      // Fetch all tracks
+      let allTracks: any[] = [];
+      let offset = 0;
+      const limit = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await this.spotifyApi.getPlaylistTracks(playlistId, {
+          offset,
+          limit,
+        });
+
+        allTracks.push(...response.body.items);
+        offset += limit;
+        hasMore = response.body.next !== null;
+      }
+
+      console.log(`[Fix Broken Tracks] Found ${allTracks.length} total tracks`);
+
+      // Identify unlinked tracks
+      // Track can be unlinked in several ways:
+      // 1. track is null
+      // 2. track.id is null (removed from catalog)
+      // 3. track.is_playable is false (regional restrictions or removed)
+      // 4. track.uri is missing
+      const unlinkedTracks = allTracks.filter((item) => {
+        return (
+          !item.track ||
+          item.track.id === null ||
+          item.track.is_playable === false ||
+          !item.track.uri
+        );
+      });
+
+      console.log(`[Fix Broken Tracks] Found ${unlinkedTracks.length} unlinked tracks`);
+
+      if (unlinkedTracks.length === 0) {
+        return {
+          success: true,
+          total: 0,
+          recovered: 0,
+          failed: 0,
+        };
+      }
+
+      // Attempt to recover each unlinked track
+      const recoveredUris: string[] = [];
+      let failedCount = 0;
+
+      for (const item of unlinkedTracks) {
+        // Try to extract track info from the item
+        const trackName = item.track?.name || 'Unknown';
+        const artistName =
+          item.track?.artists?.[0]?.name || item.track?.album?.artists?.[0]?.name || 'Unknown';
+
+        console.log(`[Fix Broken Tracks] Attempting to recover: "${trackName}" by ${artistName}`);
+
+        if (trackName === 'Unknown' || artistName === 'Unknown') {
+          console.log(`[Fix Broken Tracks] Insufficient info, skipping`);
+          failedCount++;
+          continue;
+        }
+
+        try {
+          // Search Spotify for the track
+          const searchQuery = `track:${trackName} artist:${artistName}`;
+          const searchResponse = await this.spotifyApi.searchTracks(searchQuery, { limit: 10 });
+
+          if (searchResponse.body.tracks && searchResponse.body.tracks.items.length > 0) {
+            // Sort by popularity and take the most popular
+            const results = searchResponse.body.tracks.items;
+            results.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+
+            const bestMatch = results[0];
+            console.log(
+              `[Fix Broken Tracks] ✓ Found match: "${bestMatch.name}" by ${bestMatch.artists[0].name} (popularity: ${bestMatch.popularity})`
+            );
+
+            recoveredUris.push(bestMatch.uri);
+          } else {
+            console.log(`[Fix Broken Tracks] ✗ No matches found`);
+            failedCount++;
+          }
+        } catch (error) {
+          console.error(`[Fix Broken Tracks] Search failed:`, error);
+          failedCount++;
+        }
+
+        // Add a small delay to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      console.log(
+        `[Fix Broken Tracks] Recovery complete: ${recoveredUris.length} recovered, ${failedCount} failed`
+      );
+
+      if (recoveredUris.length === 0) {
+        return {
+          success: false,
+          total: unlinkedTracks.length,
+          recovered: 0,
+          failed: failedCount,
+          error: 'No tracks could be recovered',
+        };
+      }
+
+      // Create new playlist with recovered tracks
+      const newPlaylistName = `${playlistName} - Recovered`;
+      console.log(`[Fix Broken Tracks] Creating playlist "${newPlaylistName}"`);
+
+      const createResponse = await this.spotifyApi.createPlaylist(newPlaylistName, {
+        description: `Recovered ${recoveredUris.length} broken tracks from "${playlistName}"`,
+        public: false,
+      });
+
+      const newPlaylistId = createResponse.body.id;
+
+      // Add tracks in batches of 100
+      const batchSize = 100;
+      const batches = Math.ceil(recoveredUris.length / batchSize);
+
+      for (let i = 0; i < batches; i++) {
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize, recoveredUris.length);
+        const batch = recoveredUris.slice(start, end);
+
+        await this.spotifyApi.addTracksToPlaylist(newPlaylistId, batch);
+      }
+
+      console.log(`[Fix Broken Tracks] ✓ Created playlist: ${newPlaylistId}`);
+
+      return {
+        success: true,
+        playlistId: newPlaylistId,
+        total: unlinkedTracks.length,
+        recovered: recoveredUris.length,
+        failed: failedCount,
+      };
+    } catch (error) {
+      console.error('[Fix Broken Tracks] Failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fix broken tracks',
+      };
+    }
+  }
 }

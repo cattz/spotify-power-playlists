@@ -394,6 +394,63 @@ export function setupIpcHandlers(): void {
     }
   );
 
+  // Playlist fix broken tracks handler
+  ipcMain.handle(
+    'playlist:fix-broken-links',
+    async (
+      _event,
+      playlistId: string
+    ): Promise<
+      ApiResponse<{
+        playlistId: string;
+        total: number;
+        recovered: number;
+        failed: number;
+      }>
+    > => {
+      try {
+        if (!operations) {
+          throw new Error('Operations service not initialized');
+        }
+
+        if (!spotifyAuth) {
+          throw new Error('Spotify auth not initialized');
+        }
+
+        // Ensure we have a valid access token
+        const accessToken = await spotifyAuth.getAccessToken();
+        if (!accessToken) {
+          throw new Error('Not authenticated');
+        }
+
+        const result = await operations.fixBrokenTracks(playlistId);
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error,
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            playlistId: result.playlistId!,
+            total: result.total!,
+            recovered: result.recovered!,
+            failed: result.failed!,
+          },
+        };
+      } catch (error) {
+        console.error('Fix broken tracks error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to fix broken tracks',
+        };
+      }
+    }
+  );
+
   // TODO: Add more handlers as needed
   // - spotify:get-playlist-tracks
   // - spotify:create-playlist

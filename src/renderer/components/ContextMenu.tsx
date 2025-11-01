@@ -99,9 +99,11 @@ export function ContextMenu({
       <div className="context-menu-item context-menu-item-disabled" title="Not yet implemented">
         Find Duplicates
       </div>
-      <div className="context-menu-item context-menu-item-disabled" title="Not yet implemented">
-        Recover Unlinked Tracks
-      </div>
+      {playlist.unlinked_count > 0 && (
+        <div className="context-menu-item" onClick={handleAction(onRecoverUnlinked)}>
+          Fix Broken Links ({playlist.unlinked_count})
+        </div>
+      )}
 
       <div className="context-menu-separator" />
 

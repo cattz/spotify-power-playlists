@@ -455,6 +455,31 @@ function App() {
     setShowTagModal(true);
   };
 
+  const handleFixBrokenLinks = async () => {
+    if (!contextMenu) return;
+
+    const playlist = contextMenu.playlist;
+    console.log(`[Fix Broken Links] Starting for playlist: ${playlist.name}`);
+
+    try {
+      const result = await window.electronAPI.playlists.fixBrokenLinks(playlist.spotify_id);
+
+      if (result.success && result.data) {
+        console.log(
+          `[Fix Broken Links] Recovered ${result.data.recovered}/${result.data.total} tracks`
+        );
+        console.log(`[Fix Broken Links] New playlist: ${result.data.playlistId}`);
+
+        // Refresh playlist list
+        await refreshPlaylists();
+      } else {
+        console.error('[Fix Broken Links] Failed:', result.error);
+      }
+    } catch (err) {
+      console.error('[Fix Broken Links] Error:', err);
+    }
+  };
+
   // Selection handlers
   const handleCheckboxClick = (
     playlistId: string,
@@ -750,7 +775,7 @@ function App() {
           onDelete={handleContextDelete}
           onEditTags={handleContextEditTags}
           onFindDuplicates={() => {}}
-          onRecoverUnlinked={() => {}}
+          onRecoverUnlinked={handleFixBrokenLinks}
           onExportCsv={() => {}}
         />
       )}
