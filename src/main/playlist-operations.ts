@@ -36,7 +36,7 @@ export class PlaylistOperations {
     const failed: string[] = [];
 
     // Get playlists from database to check ownership
-    const allPlaylists = this.database.getPlaylists();
+    const allPlaylists = this.database.getAllPlaylists();
     const playlistsToDelete = allPlaylists.filter((p) =>
       playlistIds.includes(p.spotify_id)
     );
@@ -93,7 +93,7 @@ export class PlaylistOperations {
    * Get details for playlists to be deleted (for confirmation dialog)
    */
   getPlaylistDetails(playlistIds: string[]): LocalPlaylist[] {
-    const allPlaylists = this.database.getPlaylists();
+    const allPlaylists = this.database.getAllPlaylists();
     return allPlaylists.filter((p) => playlistIds.includes(p.spotify_id));
   }
 }
