@@ -96,8 +96,8 @@ export function ContextMenu({
 
       <div className="context-menu-separator" />
 
-      <div className="context-menu-item context-menu-item-disabled" title="Not yet implemented">
-        Find Duplicates
+      <div className="context-menu-item" onClick={handleAction(onFindDuplicates)}>
+        Remove Duplicates
       </div>
       {playlist.unlinked_count > 0 && (
         <div className="context-menu-item" onClick={handleAction(onRecoverUnlinked)}>

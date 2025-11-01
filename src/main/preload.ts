@@ -60,6 +60,10 @@ const api = {
       playlistId: string
     ): Promise<ApiResponse<{ playlistId: string; total: number; recovered: number; failed: number }>> =>
       ipcRenderer.invoke('playlist:fix-broken-links', playlistId),
+    removeDuplicates: (
+      playlistId: string
+    ): Promise<ApiResponse<{ playlistId: string; originalCount: number; uniqueCount: number; duplicatesRemoved: number }>> =>
+      ipcRenderer.invoke('playlist:remove-duplicates', playlistId),
     // TODO: Add more playlist operation methods
     // subtract: (config: SubtractConfig) => ipcRenderer.invoke('playlist:subtract', config),
     // intersect: (config: IntersectConfig) => ipcRenderer.invoke('playlist:intersect', config),

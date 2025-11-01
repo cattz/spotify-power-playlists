@@ -451,6 +451,63 @@ export function setupIpcHandlers(): void {
     }
   );
 
+  // Playlist remove duplicates handler
+  ipcMain.handle(
+    'playlist:remove-duplicates',
+    async (
+      _event,
+      playlistId: string
+    ): Promise<
+      ApiResponse<{
+        playlistId: string;
+        originalCount: number;
+        uniqueCount: number;
+        duplicatesRemoved: number;
+      }>
+    > => {
+      try {
+        if (!operations) {
+          throw new Error('Operations service not initialized');
+        }
+
+        if (!spotifyAuth) {
+          throw new Error('Spotify auth not initialized');
+        }
+
+        // Ensure we have a valid access token
+        const accessToken = await spotifyAuth.getAccessToken();
+        if (!accessToken) {
+          throw new Error('Not authenticated');
+        }
+
+        const result = await operations.removeDuplicates(playlistId);
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error,
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            playlistId: result.playlistId!,
+            originalCount: result.originalCount!,
+            uniqueCount: result.uniqueCount!,
+            duplicatesRemoved: result.duplicatesRemoved!,
+          },
+        };
+      } catch (error) {
+        console.error('Remove duplicates error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to remove duplicates',
+        };
+      }
+    }
+  );
+
   // TODO: Add more handlers as needed
   // - spotify:get-playlist-tracks
   // - spotify:create-playlist

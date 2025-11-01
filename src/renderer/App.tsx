@@ -499,6 +499,43 @@ function App() {
     }
   };
 
+  const handleRemoveDuplicates = async () => {
+    if (!contextMenu) return;
+
+    const playlist = contextMenu.playlist;
+    console.log(`[Remove Duplicates] Starting for playlist: ${playlist.name}`);
+
+    try {
+      const result = await window.electronAPI.playlists.removeDuplicates(playlist.spotify_id);
+
+      if (result.success && result.data) {
+        const { originalCount, uniqueCount, duplicatesRemoved } = result.data;
+        console.log(`[Remove Duplicates] Original: ${originalCount}, Unique: ${uniqueCount}, Removed: ${duplicatesRemoved}`);
+        console.log(`[Remove Duplicates] New playlist: ${result.data.playlistId}`);
+
+        alert(
+          `Remove Duplicates:\n\n` +
+          `Original tracks: ${originalCount}\n` +
+          `Unique tracks: ${uniqueCount}\n` +
+          `Duplicates removed: ${duplicatesRemoved}\n\n` +
+          `Created new playlist: "${playlist.name} - No Duplicates"`
+        );
+
+        // Refresh playlist list
+        await refreshPlaylists();
+      } else {
+        const errorMsg = typeof result.error === 'string'
+          ? result.error
+          : JSON.stringify(result.error);
+        console.error('[Remove Duplicates] Failed:', result.error);
+        alert(`Failed to remove duplicates: ${errorMsg}`);
+      }
+    } catch (err) {
+      console.error('[Remove Duplicates] Error:', err);
+      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
   // Selection handlers
   const handleCheckboxClick = (
     playlistId: string,
@@ -793,7 +830,7 @@ function App() {
           onRename={() => {}}
           onDelete={handleContextDelete}
           onEditTags={handleContextEditTags}
-          onFindDuplicates={() => {}}
+          onFindDuplicates={handleRemoveDuplicates}
           onRecoverUnlinked={handleFixBrokenLinks}
           onExportCsv={() => {}}
         />

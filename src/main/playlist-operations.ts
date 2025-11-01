@@ -499,4 +499,158 @@ export class PlaylistOperations {
       };
     }
   }
+
+  /**
+   * Remove duplicate tracks from a playlist
+   * Creates a new playlist with only unique tracks (first occurrence kept)
+   */
+  async removeDuplicates(playlistId: string): Promise<{
+    success: boolean;
+    playlistId?: string;
+    originalCount?: number;
+    uniqueCount?: number;
+    duplicatesRemoved?: number;
+    error?: string;
+  }> {
+    try {
+      console.log(`[Remove Duplicates] Starting for playlist ${playlistId}`);
+
+      // Get playlist details
+      const playlistResponse = await this.spotifyApi.getPlaylist(playlistId);
+      const playlist = playlistResponse.body;
+      const playlistName = playlist.name;
+
+      console.log(`[Remove Duplicates] Playlist: ${playlistName}`);
+
+      // Fetch all tracks
+      let allTracks: any[] = [];
+      let offset = 0;
+      const limit = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await this.spotifyApi.getPlaylistTracks(playlistId, {
+          offset,
+          limit,
+        });
+
+        allTracks.push(...response.body.items);
+        offset += limit;
+        hasMore = response.body.next !== null;
+      }
+
+      console.log(`[Remove Duplicates] Found ${allTracks.length} total tracks`);
+
+      // Track URIs and find duplicates
+      const uniqueUris: string[] = [];
+      const seenUris = new Set<string>();
+      let duplicateCount = 0;
+
+      for (const item of allTracks) {
+        // Skip null tracks (unlinked/unavailable)
+        if (!item.track || !item.track.uri) {
+          console.log(`[Remove Duplicates] Skipping unlinked track`);
+          continue;
+        }
+
+        const uri = item.track.uri;
+
+        if (!seenUris.has(uri)) {
+          // First occurrence, keep it
+          uniqueUris.push(uri);
+          seenUris.add(uri);
+        } else {
+          // Duplicate, skip it
+          duplicateCount++;
+        }
+      }
+
+      console.log(
+        `[Remove Duplicates] Found ${uniqueUris.length} unique tracks, ${duplicateCount} duplicates`
+      );
+
+      if (duplicateCount === 0) {
+        return {
+          success: false,
+          error: 'No duplicate tracks found in this playlist',
+        };
+      }
+
+      // Validate all URIs are valid Spotify track URIs
+      const validTrackUris = uniqueUris.filter((uri) => {
+        const isValid = uri && uri.startsWith('spotify:track:') && uri.split(':').length === 3;
+        if (!isValid) {
+          console.log(`[Remove Duplicates] Skipping invalid URI: ${uri}`);
+        }
+        return isValid;
+      });
+
+      console.log(`[Remove Duplicates] Validated ${validTrackUris.length} track URIs`);
+
+      if (validTrackUris.length === 0) {
+        return {
+          success: false,
+          error: 'No valid tracks to create playlist (all tracks were unlinked or invalid)',
+        };
+      }
+
+      // Create new playlist
+      const newPlaylistName = `${playlistName} - No Duplicates`;
+      console.log(`[Remove Duplicates] Creating playlist "${newPlaylistName}"`);
+
+      const createResponse = await this.spotifyApi.createPlaylist(newPlaylistName, {
+        description: `Duplicate-free version of "${playlistName}" (removed ${duplicateCount} duplicates)`,
+        public: false,
+      });
+
+      const newPlaylistId = createResponse.body.id;
+      console.log(`[Remove Duplicates] Created playlist ${newPlaylistId}`);
+
+      // Add tracks in batches of 100 (Spotify API limit)
+      const batchSize = 100;
+      const batches = Math.ceil(validTrackUris.length / batchSize);
+
+      for (let i = 0; i < batches; i++) {
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize, validTrackUris.length);
+        const batch = validTrackUris.slice(start, end);
+
+        console.log(`[Remove Duplicates] Adding batch ${i + 1}/${batches} (${batch.length} tracks)...`);
+        await this.spotifyApi.addTracksToPlaylist(newPlaylistId, batch);
+      }
+
+      console.log(`[Remove Duplicates] Successfully added ${validTrackUris.length} unique tracks`);
+
+      // Log operation to history
+      this.database.logOperation({
+        timestamp: Date.now(),
+        operation_type: 'remove_duplicates',
+        playlists_affected: JSON.stringify([playlistId, newPlaylistId]),
+        details: JSON.stringify({
+          source_playlist: playlistId,
+          new_playlist: newPlaylistId,
+          original_count: allTracks.length,
+          unique_count: validTrackUris.length,
+          duplicates_removed: duplicateCount,
+        }),
+        can_undo: false,
+      });
+
+      console.log('[Remove Duplicates] Completed successfully');
+
+      return {
+        success: true,
+        playlistId: newPlaylistId,
+        originalCount: allTracks.length,
+        uniqueCount: validTrackUris.length,
+        duplicatesRemoved: duplicateCount,
+      };
+    } catch (error) {
+      console.error('[Remove Duplicates] Failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to remove duplicates',
+      };
+    }
+  }
 }
