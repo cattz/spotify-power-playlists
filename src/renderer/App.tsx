@@ -155,12 +155,6 @@ function App() {
   };
 
   const handleDeleteConfirm = async () => {
-    // SAFETY CHECK: Prevent accidental deletion during testing
-    console.log('DELETE OPERATION TRIGGERED');
-    console.log('Would delete playlists:', playlistsToDelete.map((p) => p.name));
-
-    // TODO: Uncomment this block when ready for actual deletion
-    /*
     setDeleting(true);
 
     try {
@@ -188,11 +182,6 @@ function App() {
     } finally {
       setDeleting(false);
     }
-    */
-
-    // For now, just close the modal for testing UI flow
-    setShowDeleteModal(false);
-    setDeleting(false);
   };
 
   const handleDeleteCancel = () => {
