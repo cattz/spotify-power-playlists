@@ -18,10 +18,12 @@
     "generate-monthly-likes": "tsx src/cli/generate-monthly-likes.ts",
     "fix-unlinked": "tsx src/cli/fix-unlinked-tracks.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src --ext .ts,.tsx",
+    "postinstall": "electron-rebuild"
   },
   "dependencies": {
     "better-sqlite3": "^9.0.0",
+    "dotenv": "^17.2.3",
     "electron-store": "^8.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -29,6 +31,7 @@
     "spotify-web-api-node": "^5.0.2"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",

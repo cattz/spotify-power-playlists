@@ -35,6 +35,7 @@ export default defineConfig({
                 'better-sqlite3',
                 'electron-store',
                 'spotify-web-api-node',
+                'dotenv',
               ],
             },
           },
