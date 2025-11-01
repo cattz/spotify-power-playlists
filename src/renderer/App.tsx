@@ -215,6 +215,9 @@ function App() {
 
   // Format duration helper
   const formatDuration = (ms: number): string => {
+    if (ms === 0) {
+      return '-';
+    }
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     if (hours > 0) {
