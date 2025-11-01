@@ -166,7 +166,8 @@ export class PlaylistSyncService {
             let duration = 0;
             let unlinkedCount = 0;
             if (playlist.tracks.items) {
-              for (const item of playlist.tracks.items) {
+              for (let trackIndex = 0; trackIndex < playlist.tracks.items.length; trackIndex++) {
+                const item = playlist.tracks.items[trackIndex];
                 // Check if track is unlinked/unavailable
                 // Track can be unlinked in several ways:
                 // 1. track is null
