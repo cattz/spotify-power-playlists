@@ -8,6 +8,7 @@ import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import { TagModal } from './components/TagModal';
 import { MergeModal } from './components/MergeModal';
 import { ContextMenu } from './components/ContextMenu';
+import { SetupGuideModal } from './components/SetupGuideModal';
 import { UI_CONSTANTS } from '@shared/constants';
 import type { LocalPlaylist } from '@shared/types';
 
@@ -56,6 +57,9 @@ function App() {
     x: number;
     y: number;
   } | null>(null);
+
+  // Setup guide modal state
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
 
   // Playlist management
   const {
@@ -659,13 +663,24 @@ function App() {
             <p className="placeholder">
               Connect your Spotify account to manage your playlists
             </p>
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="auth-button"
-            >
-              {loading ? 'Authenticating...' : 'Connect with Spotify'}
-            </button>
+            <p className="auth-subtext">
+              First time? You'll need to create a free Spotify Developer app.
+            </p>
+            <div className="auth-buttons">
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="auth-button primary"
+              >
+                {loading ? 'Authenticating...' : 'Connect with Spotify'}
+              </button>
+              <button
+                onClick={() => setShowSetupGuide(true)}
+                className="auth-button secondary"
+              >
+                How to Setup
+              </button>
+            </div>
             {error && <p className="error-message">{error}</p>}
           </div>
         ) : playlistsLoading ? (
@@ -835,6 +850,12 @@ function App() {
           onExportCsv={() => {}}
         />
       )}
+
+      {/* Setup guide modal */}
+      <SetupGuideModal
+        isOpen={showSetupGuide}
+        onClose={() => setShowSetupGuide(false)}
+      />
     </div>
   );
 }

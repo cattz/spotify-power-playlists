@@ -185,6 +185,45 @@ body {
   cursor: not-allowed;
 }
 
+.auth-button.primary {
+  background-color: var(--border);
+  color: var(--bg-primary);
+  font-weight: bold;
+}
+
+.auth-button.primary:hover:not(:disabled) {
+  background-color: var(--text-primary);
+  box-shadow: 0 0 15px var(--border);
+}
+
+.auth-button.secondary {
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
+  border-color: var(--text-secondary);
+}
+
+.auth-button.secondary:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  box-shadow: 0 0 10px var(--text-secondary);
+}
+
+.auth-subtext {
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-top: var(--spacing-sm);
+  margin-bottom: 0;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--spacing-lg);
+}
+
 .error-message {
   color: var(--error);
   margin-top: var(--spacing-md);
