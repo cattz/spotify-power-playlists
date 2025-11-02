@@ -1,10 +1,10 @@
 # Development Progress
 
-Last Updated: 2025-11-01
+Last Updated: 2025-11-02
 
 ## Current Status
 
-All recent features have been successfully implemented and committed.
+**Bulk Regex Rename** feature completed and tested! Background sync moved to on-demand operation.
 
 ---
 
@@ -66,16 +66,31 @@ All recent features have been successfully implemented and committed.
   - Now processes ~1 request/second sustained
   - Takes ~13 minutes for 794 playlists instead of ~5 minutes
 
+- [x] **Bulk Regex Rename** (Commit: 9ff14c5, 12f5076) ⭐
+  - Find/replace pattern with full regex support
+  - Live preview showing original → renamed
+  - Supports capture groups (e.g., `^(\d{2})` → `20$1`)
+  - Statistics display: total, will rename, skipped (not owned), errors
+  - Context menu integration (smart selection handling)
+  - Keyboard shortcut: Cmd/Ctrl + R
+  - Help section with common regex examples
+  - Regex validation with clear error messages
+  - **Tested and working!**
+
+- [x] **On-Demand Background Sync** (Commit: 9ff14c5)
+  - Removed automatic trigger after main sync to avoid rate limiting
+  - Added manual "SYNC DETAILS" button in action bar
+  - Main SYNC now fast (only fetches playlist names/IDs)
+  - SYNC DETAILS fetches full metadata (track counts, durations, followers, unlinked tracks)
+  - Shows completion stats and refreshes view after sync
+  - Prevents concurrent sync operations
+
 ---
 
 ## 🐛 Known Issues
 
 ### Critical
-- **Spotify Rate Limit Active** (Detected: 2025-11-01)
-  - HTTP 429 errors with `retry-after: 78300` seconds (~21.75 hours)
-  - Cannot test new features requiring Spotify API until rate limit expires
-  - User must wait before syncing again
-  - **TODO**: Add user-facing warning when 429 errors are detected
+- None currently
 
 ### Minor
 - Multiple dev server processes running in background (can be cleaned up)
@@ -85,13 +100,7 @@ All recent features have been successfully implemented and committed.
 ## 📋 Pending Features (From CLAUDE.md)
 
 ### High Priority
-1. **Bulk Regex Rename**
-   - Find/replace pattern for playlist names
-   - Support capture groups (e.g., `^(\d{2}) → 20$1`)
-   - Preview changes before applying
-   - Only rename owned playlists
-
-2. **Subtract Operation (A - B)**
+1. **Subtract Operation (A - B)**
    - Remove tracks from B that exist in A
    - Create new playlist with result
    - Dialog for source selection
@@ -163,7 +172,10 @@ src/
 │   │   ├── ContextMenu.tsx        # Right-click menu
 │   │   ├── DeleteConfirmationModal.tsx
 │   │   ├── TagModal.tsx
-│   │   └── MergeModal.tsx
+│   │   ├── MergeModal.tsx
+│   │   ├── RenameModal.tsx        # Bulk regex rename with live preview
+│   │   ├── RenameModal.css        # Rename modal styling
+│   │   └── SetupGuideModal.tsx    # User setup guide for Spotify credentials
 │   ├── hooks/
 │   │   ├── usePlaylists.ts
 │   │   ├── useDebounce.ts
@@ -225,10 +237,11 @@ const DELAY_MS = 5000;  // 5 seconds between batches
 
 | Commit | Date | Description |
 |--------|------|-------------|
+| 12f5076 | 2025-11-02 | Fix TypeScript error: use correct RateLimitInfo property name |
+| 9ff14c5 | 2025-11-02 | Add bulk regex rename feature and make background sync on-demand ⭐ |
 | ea0d61c | 2025-11-01 | Add remove duplicates feature |
 | 1a00d7d | 2025-11-01 | Increase background sync delay to 5s |
 | cdd7a72 | 2025-11-01 | Export failed recovery tracks to CSV |
-| 209a898 | 2025-11-01 | Remove debug logging for unlinked track detection |
 
 ---
 
@@ -236,22 +249,22 @@ const DELAY_MS = 5000;  // 5 seconds between batches
 
 ### Tested Features
 - ✅ Authentication flow
-- ✅ Playlist sync (quick + background)
+- ✅ Playlist sync (quick + on-demand details)
 - ✅ Search/filter with regex
 - ✅ Selection (single, multi, range)
 - ✅ Delete playlists
 - ✅ Tag management
 - ✅ Merge playlists
 - ✅ Owner filter UI
-- ⏳ Fix broken tracks (rate limited, cannot test)
-- ⏳ Remove duplicates (rate limited, cannot test)
-- ⏳ CSV export (rate limited, cannot test)
+- ✅ **Bulk regex rename** (tested with multiple patterns)
+- ✅ **Context menu rename** (smart selection handling)
+- ✅ Fix broken tracks
+- ✅ Remove duplicates
+- ✅ CSV export for failed recoveries
 
 ### Not Yet Tested
-- [ ] Fix broken tracks with actual unlinked tracks
-- [ ] Remove duplicates with actual duplicate tracks
-- [ ] CSV export validation
-- [ ] Large-scale operations (>100 playlists)
+- [ ] Large-scale rename operations (>50 playlists)
+- [ ] All possible regex edge cases
 - [ ] Windows compatibility
 - [ ] Linux compatibility
 
@@ -317,34 +330,36 @@ VITE_SPOTIFY_CLIENT_ID=your_client_id_here
 
 ## 🎯 Next Session Goals
 
-1. **Implement 429 Error Warning System** (URGENT)
-   - Detect rate limit errors in sync process
-   - Show user-friendly alert with retry-after time
-   - Disable sync button until rate limit expires
-   - Store rate limit state in app
+1. **Implement Subtract Operation (A - B)** (High priority)
+   - Select two playlists (A and B)
+   - Remove all tracks from A that exist in B
+   - Create new playlist with result
+   - Modal dialog for source selection
 
-2. **Test New Features** (When rate limit expires)
-   - Fix broken tracks with real unlinked tracks
-   - Remove duplicates with real duplicate playlists
-   - Verify CSV export format and contents
+2. **Implement Intersect Operation (A ∩ B)** (High priority)
+   - Select 2+ playlists
+   - Find tracks common to ALL selected playlists
+   - Create new playlist with result
+   - Modal dialog with preview
 
-3. **Implement Bulk Regex Rename** (High priority)
-   - Modal dialog with find/replace inputs
-   - Live preview of changes
-   - Support capture groups
-   - Apply to selected playlists
+3. **Export Playlist Metadata to CSV** (Medium priority)
+   - Export selected playlist metadata to CSV
+   - Include: name, owner, track count, duration, followers, tags, etc.
+   - Allow user to choose export location
+   - Context menu option
 
-4. **Clean up Background Processes**
-   - Kill unused dev server processes
-   - Ensure only one server is running
+4. **Settings Panel** (Medium priority)
+   - Account info display
+   - Manual/auto-sync configuration
+   - Column visibility toggles
+   - Database management options
 
 ---
 
 ## 🐛 Known Bugs to Fix
 
 1. **Multiple dev servers running** - Need to kill old processes
-2. **No visual feedback during long operations** - Add progress bars/spinners
-3. **Rate limit not communicated to user** - Add warning system (TODO)
+2. **No visual feedback during long operations** - Add progress bars/spinners (partially done with loading states)
 
 ---
 
