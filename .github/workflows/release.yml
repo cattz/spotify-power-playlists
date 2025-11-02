@@ -42,7 +42,19 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsqlite3-dev
+          sudo apt-get install -y \
+            libsqlite3-dev \
+            build-essential \
+            python3 \
+            libgtk-3-0 \
+            libnotify4 \
+            libnss3 \
+            libxtst6 \
+            xvfb \
+            libatspi2.0-0 \
+            libdrm2 \
+            libgbm1 \
+            libxss1
 
       - name: Install dependencies
         run: npm ci
