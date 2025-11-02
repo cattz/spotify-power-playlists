@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "description": "Advanced Spotify playlist management desktop app for DJs and power users",
   "main": "dist-electron/main.js",
-  "author": "DJ / Power User",
+  "author": {
+    "name": "Xabier Davila",
+    "email": "davila.xabier@gmail.com"
+  },
   "license": "MIT",
   "private": true,
   "scripts": {
