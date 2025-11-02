@@ -19,7 +19,7 @@
     "fix-unlinked": "tsx src/cli/fix-unlinked-tracks.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "better-sqlite3": "^9.0.0",
