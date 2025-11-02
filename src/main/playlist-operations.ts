@@ -653,4 +653,101 @@ export class PlaylistOperations {
       };
     }
   }
+
+  /**
+   * Bulk rename playlists using regex find/replace
+   */
+  async bulkRename(
+    playlistIds: string[],
+    findPattern: string,
+    replacePattern: string
+  ): Promise<{
+    success: boolean;
+    renamed?: number;
+    failed?: string[];
+    error?: string;
+  }> {
+    try {
+      console.log(`[Bulk Rename] Starting bulk rename for ${playlistIds.length} playlists`);
+      console.log(`[Bulk Rename] Pattern: "${findPattern}" → "${replacePattern}"`);
+
+      // Validate regex pattern
+      let regex: RegExp;
+      try {
+        regex = new RegExp(findPattern, 'g');
+      } catch (err) {
+        return {
+          success: false,
+          error: `Invalid regex pattern: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        };
+      }
+
+      const failed: string[] = [];
+      let renamed = 0;
+
+      for (const playlistId of playlistIds) {
+        try {
+          // Get playlist from database
+          const playlist = this.database.getPlaylistById(playlistId);
+          if (!playlist) {
+            console.log(`[Bulk Rename] Playlist ${playlistId} not found in database`);
+            failed.push(playlistId);
+            continue;
+          }
+
+          // Skip if not owned
+          if (!playlist.is_owner) {
+            console.log(`[Bulk Rename] Skipping ${playlist.name} - not owned`);
+            failed.push(playlistId);
+            continue;
+          }
+
+          // Apply regex rename
+          const newName = playlist.name.replace(regex, replacePattern);
+
+          // Skip if name didn't change
+          if (newName === playlist.name) {
+            console.log(`[Bulk Rename] Skipping ${playlist.name} - no change`);
+            continue;
+          }
+
+          // Validate new name
+          if (!newName || newName.trim().length === 0) {
+            console.log(`[Bulk Rename] Skipping ${playlist.name} - invalid new name`);
+            failed.push(playlistId);
+            continue;
+          }
+
+          console.log(`[Bulk Rename] Renaming "${playlist.name}" → "${newName}"`);
+
+          // Rename via Spotify API
+          await this.spotifyApi.changePlaylistDetails(playlistId, {
+            name: newName,
+          });
+
+          // Update in database
+          this.database.updatePlaylistName(playlistId, newName);
+
+          renamed++;
+        } catch (error) {
+          console.error(`[Bulk Rename] Failed to rename playlist ${playlistId}:`, error);
+          failed.push(playlistId);
+        }
+      }
+
+      console.log(`[Bulk Rename] Completed: ${renamed} renamed, ${failed.length} failed`);
+
+      return {
+        success: true,
+        renamed,
+        failed,
+      };
+    } catch (error) {
+      console.error('[Bulk Rename] Failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to rename playlists',
+      };
+    }
+  }
 }

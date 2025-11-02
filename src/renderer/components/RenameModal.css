@@ -1,0 +1,232 @@
+/* Rename Modal Styles */
+
+.rename-modal {
+  max-width: 800px;
+  width: 95%;
+  max-height: 90vh;
+}
+
+.rename-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.input-group label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.rename-input {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: var(--spacing-sm);
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  width: 100%;
+  transition: border-color 0.1s ease;
+}
+
+.rename-input:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 5px var(--border);
+}
+
+.rename-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rename-error {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid var(--error);
+  color: var(--error);
+  padding: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  font-size: 11px;
+}
+
+.rename-help {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-dim);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  font-size: 10px;
+}
+
+.rename-help strong {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary);
+}
+
+.help-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.help-examples > div {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.help-examples code {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-dim);
+  padding: 2px 6px;
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  min-width: 100px;
+  display: inline-block;
+}
+
+.help-desc {
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+
+.rename-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-dim);
+  font-size: 11px;
+  margin-bottom: var(--spacing-md);
+}
+
+.rename-stats span {
+  color: var(--text-secondary);
+}
+
+.stat-changed {
+  color: var(--text-primary) !important;
+  font-weight: bold;
+}
+
+.stat-skipped {
+  color: var(--warning) !important;
+}
+
+.stat-error {
+  color: var(--error) !important;
+}
+
+.rename-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.rename-preview-header {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.rename-preview {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-dim);
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+}
+
+.preview-item {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--spacing-sm);
+  padding: 4px;
+  font-size: 11px;
+  align-items: center;
+  border-bottom: 1px solid var(--bg-secondary);
+}
+
+.preview-item:last-child {
+  border-bottom: none;
+}
+
+.preview-item.changed {
+  background: rgba(0, 255, 0, 0.05);
+}
+
+.preview-item.changed .preview-renamed {
+  color: var(--text-primary);
+  font-weight: bold;
+}
+
+.preview-item.error {
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.preview-original {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-arrow {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.preview-renamed {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-error-text {
+  color: var(--error);
+  font-style: italic;
+  font-size: 10px;
+}
+
+.preview-empty {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.preview-more {
+  text-align: center;
+  padding: var(--spacing-sm);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-style: italic;
+  border-top: 1px solid var(--border-dim);
+  margin-top: var(--spacing-xs);
+}
+
+/* Scrollbar for preview */
+.rename-preview::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rename-preview::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.rename-preview::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border: 1px solid var(--bg-primary);
+}
+
+.rename-preview::-webkit-scrollbar-thumb:hover {
+  background: var(--text-primary);
+}

@@ -122,22 +122,6 @@ export function setupIpcHandlers(): void {
 
         const result = await syncService.syncAllPlaylists();
 
-        // Start background detail sync after main sync completes
-        if (result.synced > 0) {
-          console.log('[Sync] Starting background detail fetch...');
-          // Run in background without awaiting
-          syncService
-            .syncPlaylistDetailsBackground()
-            .then((bgResult) => {
-              console.log(
-                `[Sync] Background detail fetch complete: ${bgResult.synced}/${bgResult.total} playlists`
-              );
-            })
-            .catch((error) => {
-              console.error('[Sync] Background detail fetch error:', error);
-            });
-        }
-
         return { success: true, data: result };
       } catch (error) {
         console.error('Playlist sync error:', error);
@@ -564,10 +548,75 @@ export function setupIpcHandlers(): void {
     }
   );
 
+  // Playlist bulk rename handler
+  ipcMain.handle(
+    'playlist:bulk-rename',
+    async (
+      _event,
+      playlistIds: string[],
+      findPattern: string,
+      replacePattern: string
+    ): Promise<
+      ApiResponse<{
+        renamed: number;
+        failed: string[];
+      }>
+    > => {
+      try {
+        if (!operations) {
+          throw new Error('Operations service not initialized');
+        }
+
+        if (!spotifyAuth) {
+          throw new Error('Spotify auth not initialized');
+        }
+
+        // Ensure we have a valid access token
+        const accessToken = await spotifyAuth.getAccessToken();
+        if (!accessToken) {
+          throw new Error('Not authenticated. Please log in to Spotify.');
+        }
+
+        const result = await operations.bulkRename(playlistIds, findPattern, replacePattern);
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error,
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            renamed: result.renamed!,
+            failed: result.failed!,
+          },
+        };
+      } catch (error) {
+        console.error('Bulk rename error:', error);
+
+        // Check if this is a rate limit error
+        const rateLimitInfo = checkRateLimit(error);
+        if (rateLimitInfo.isRateLimited) {
+          logRateLimit(rateLimitInfo);
+          return {
+            success: false,
+            error: rateLimitInfo.message || 'Spotify API rate limit exceeded',
+          };
+        }
+
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to rename playlists',
+        };
+      }
+    }
+  );
+
   // TODO: Add more handlers as needed
   // - spotify:get-playlist-tracks
   // - spotify:create-playlist
-  // - spotify:rename-playlist
   // - playlist:subtract
   // - playlist:intersect
 }

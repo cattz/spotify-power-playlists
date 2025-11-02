@@ -7,6 +7,7 @@ import { filterPlaylists } from './utils/filterPlaylists';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import { TagModal } from './components/TagModal';
 import { MergeModal } from './components/MergeModal';
+import { RenameModal } from './components/RenameModal';
 import { ContextMenu } from './components/ContextMenu';
 import { SetupGuideModal } from './components/SetupGuideModal';
 import { UI_CONSTANTS } from '@shared/constants';
@@ -51,6 +52,11 @@ function App() {
   const [playlistsToMerge, setPlaylistsToMerge] = useState<LocalPlaylist[]>([]);
   const [merging, setMerging] = useState(false);
 
+  // Rename modal state
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [playlistsToRename, setPlaylistsToRename] = useState<LocalPlaylist[]>([]);
+  const [renaming, setRenaming] = useState(false);
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     playlist: LocalPlaylist;
@@ -60,6 +66,9 @@ function App() {
 
   // Setup guide modal state
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+
+  // Sync details state
+  const [syncingDetails, setSyncingDetails] = useState(false);
 
   // Playlist management
   const {
@@ -150,6 +159,14 @@ function App() {
         }
       }
 
+      // Cmd/Ctrl + R to rename playlists
+      if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+        e.preventDefault();
+        if (selectedIds.size > 0) {
+          handleRenameClick();
+        }
+      }
+
       // Escape to clear selection
       if (e.key === 'Escape') {
         clearSelection();
@@ -204,6 +221,35 @@ function App() {
 
   const handleSync = async () => {
     await syncPlaylists();
+  };
+
+  const handleSyncDetails = async () => {
+    setSyncingDetails(true);
+    try {
+      const result = await window.electronAPI.playlists.syncDetailsBackground();
+      if (result.success && result.data) {
+        console.log(
+          `[Sync Details] Completed: ${result.data.synced}/${result.data.total} playlists synced`
+        );
+        if (result.data.failed > 0) {
+          console.warn(`[Sync Details] Failed: ${result.data.failed} playlists`);
+        }
+        alert(
+          `Sync Details Complete!\n\n` +
+          `Synced: ${result.data.synced}/${result.data.total}\n` +
+          (result.data.failed > 0 ? `Failed: ${result.data.failed}` : '')
+        );
+        // Refresh to show updated details
+        await refreshPlaylists();
+      } else {
+        alert(`Failed to sync details: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('[Sync Details] Error:', err);
+      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setSyncingDetails(false);
+    }
   };
 
   // Header checkbox handler (select all visible)
@@ -402,6 +448,66 @@ function App() {
     setPlaylistsToMerge([]);
   };
 
+  // Rename handlers
+  const handleRenameClick = async () => {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    // Get details for selected playlists
+    const selectedPlaylistIds = Array.from(selectedIds);
+    const result = await window.electronAPI.playlists.getDetails(selectedPlaylistIds);
+
+    if (result.success && result.data) {
+      setPlaylistsToRename(result.data);
+      setShowRenameModal(true);
+    }
+  };
+
+  const handleRenameConfirm = async (findPattern: string, replacePattern: string) => {
+    setRenaming(true);
+
+    try {
+      const selectedPlaylistIds = playlistsToRename.map((p) => p.spotify_id);
+      const result = await window.electronAPI.playlists.bulkRename(
+        selectedPlaylistIds,
+        findPattern,
+        replacePattern
+      );
+
+      if (result.success && result.data) {
+        console.log(`Renamed ${result.data.renamed} playlists`);
+        if (result.data.failed.length > 0) {
+          console.warn(`Failed to rename ${result.data.failed.length} playlists`);
+        }
+
+        // Refresh playlist data
+        await refreshPlaylists();
+
+        // Clear selection and close modal
+        clearSelection();
+        setShowRenameModal(false);
+        setPlaylistsToRename([]);
+
+        alert(
+          `Successfully renamed ${result.data.renamed} playlist${result.data.renamed !== 1 ? 's' : ''}!` +
+          (result.data.failed.length > 0 ? `\n\nFailed to rename ${result.data.failed.length} playlist${result.data.failed.length !== 1 ? 's' : ''}.` : '')
+        );
+      } else {
+        alert(`Failed to rename playlists: ${result.error}`);
+      }
+    } catch (err) {
+      alert(`Error renaming playlists: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setShowRenameModal(false);
+    setPlaylistsToRename([]);
+  };
+
   // Context menu handlers
   const handleContextMenu = (
     playlist: LocalPlaylist,
@@ -456,6 +562,26 @@ function App() {
     if (!contextMenu) return;
     setPlaylistsToTag([contextMenu.playlist]);
     setShowTagModal(true);
+  };
+
+  const handleContextRename = async () => {
+    if (!contextMenu) return;
+
+    // If the right-clicked playlist is part of the selection, use all selected playlists
+    // Otherwise, use just the right-clicked playlist
+    if (selectedIds.has(contextMenu.playlist.spotify_id)) {
+      // Use all selected playlists
+      const selectedPlaylistIds = Array.from(selectedIds);
+      const result = await window.electronAPI.playlists.getDetails(selectedPlaylistIds);
+      if (result.success && result.data) {
+        setPlaylistsToRename(result.data);
+        setShowRenameModal(true);
+      }
+    } else {
+      // Use just the right-clicked playlist
+      setPlaylistsToRename([contextMenu.playlist]);
+      setShowRenameModal(true);
+    }
   };
 
   const handleFixBrokenLinks = async () => {
@@ -783,7 +909,12 @@ function App() {
         >
           MERGE
         </button>
-        <button disabled>RENAME</button>
+        <button
+          onClick={handleRenameClick}
+          disabled={!authenticated || selectedIds.size === 0}
+        >
+          RENAME
+        </button>
         <button onClick={handleTagClick} disabled={!authenticated || selectedIds.size === 0}>
           TAG
         </button>
@@ -796,8 +927,11 @@ function App() {
           DELETE
         </button>
         <button disabled>SETTINGS</button>
-        <button onClick={handleSync} disabled={!authenticated || syncing}>
+        <button onClick={handleSync} disabled={!authenticated || syncing || syncingDetails}>
           {syncing ? 'SYNCING...' : 'SYNC'}
+        </button>
+        <button onClick={handleSyncDetails} disabled={!authenticated || syncing || syncingDetails || playlists.length === 0}>
+          {syncingDetails ? 'SYNCING...' : 'SYNC DETAILS'}
         </button>
       </div>
 
@@ -831,6 +965,16 @@ function App() {
         />
       )}
 
+      {/* Rename modal */}
+      {showRenameModal && (
+        <RenameModal
+          playlists={playlistsToRename}
+          onConfirm={handleRenameConfirm}
+          onCancel={handleRenameCancel}
+          renaming={renaming}
+        />
+      )}
+
       {/* Context menu */}
       {contextMenu && (
         <ContextMenu
@@ -841,7 +985,7 @@ function App() {
           onOpenInSpotify={handleOpenInSpotify}
           onCopyLink={handleCopyLink}
           onCopyId={handleCopyId}
-          onRename={() => {}}
+          onRename={handleContextRename}
           onDelete={handleContextDelete}
           onEditTags={handleContextEditTags}
           onFindDuplicates={handleRemoveDuplicates}

@@ -29,6 +29,7 @@ export function ContextMenu({
   onOpenInSpotify,
   onCopyLink,
   onCopyId,
+  onRename,
   onDelete,
   onEditTags,
   onFindDuplicates,
@@ -80,9 +81,11 @@ export function ContextMenu({
 
       <div className="context-menu-separator" />
 
-      <div className="context-menu-item context-menu-item-disabled" title="Not yet implemented">
-        Rename (Cmd+R)
-      </div>
+      {playlist.is_owner && (
+        <div className="context-menu-item" onClick={handleAction(onRename)}>
+          Rename (Cmd+R)
+        </div>
+      )}
       {playlist.is_owner && (
         <div className="context-menu-item" onClick={handleAction(onDelete)}>
           Delete (Del)

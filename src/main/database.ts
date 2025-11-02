@@ -127,6 +127,11 @@ export class PlaylistDatabase {
     stmt.run(tags, id);
   }
 
+  updatePlaylistName(id: string, name: string): void {
+    const stmt = this.db.prepare('UPDATE playlists SET name = ? WHERE spotify_id = ?');
+    stmt.run(name, id);
+  }
+
   // Operation history
   logOperation(operation: Omit<OperationHistory, 'id'>): void {
     const stmt = this.db.prepare(`
