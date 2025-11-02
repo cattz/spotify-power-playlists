@@ -597,12 +597,12 @@ export function setupIpcHandlers(): void {
         console.error('Bulk rename error:', error);
 
         // Check if this is a rate limit error
-        const rateLimit = checkRateLimit(error);
-        if (rateLimit) {
-          logRateLimit(rateLimit);
+        const rateLimitInfo = checkRateLimit(error);
+        if (rateLimitInfo.isRateLimited) {
+          logRateLimit(rateLimitInfo);
           return {
             success: false,
-            error: `Rate limited by Spotify. Please wait ${Math.ceil(rateLimit.retryAfter / 60)} minutes.`,
+            error: rateLimitInfo.message || 'Spotify API rate limit exceeded',
           };
         }
 
