@@ -69,8 +69,6 @@ jobs:
         env:
           # Prevent Electron from spawning extra processes
           CI: true
-          # Disable auto-publish (we'll use release.yml for that)
-          GH_TOKEN: ''
 
       - name: Upload artifacts (macOS)
         if: matrix.os == 'macos-latest'

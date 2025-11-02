@@ -1,6 +1,7 @@
 {
   "appId": "com.dj.spotify-playlist-manager",
   "productName": "Spotify Playlist Manager",
+  "publish": null,
   "directories": {
     "output": "release",
     "buildResources": "build"
