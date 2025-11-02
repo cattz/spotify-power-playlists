@@ -64,6 +64,12 @@ const api = {
       playlistId: string
     ): Promise<ApiResponse<{ playlistId: string; originalCount: number; uniqueCount: number; duplicatesRemoved: number }>> =>
       ipcRenderer.invoke('playlist:remove-duplicates', playlistId),
+    bulkRename: (
+      playlistIds: string[],
+      findPattern: string,
+      replacePattern: string
+    ): Promise<ApiResponse<{ renamed: number; failed: string[] }>> =>
+      ipcRenderer.invoke('playlist:bulk-rename', playlistIds, findPattern, replacePattern),
     // TODO: Add more playlist operation methods
     // subtract: (config: SubtractConfig) => ipcRenderer.invoke('playlist:subtract', config),
     // intersect: (config: IntersectConfig) => ipcRenderer.invoke('playlist:intersect', config),
