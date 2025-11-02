@@ -16,7 +16,7 @@ interface UseSelectionReturn {
 
 export function useSelection(): UseSelectionReturn {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [lastClickedId, setLastClickedId] = useState<string | null>(null);
+  const [, setLastClickedId] = useState<string | null>(null);
 
   /**
    * Check if an item is selected

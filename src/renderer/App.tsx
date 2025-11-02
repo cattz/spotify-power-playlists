@@ -79,7 +79,6 @@ function App() {
     selectRange,
     selectAll,
     clearSelection,
-    setLastClickedId,
   } = useSelection();
 
   // Debounce search query

@@ -29,12 +29,10 @@ export function ContextMenu({
   onOpenInSpotify,
   onCopyLink,
   onCopyId,
-  onRename,
   onDelete,
   onEditTags,
   onFindDuplicates,
   onRecoverUnlinked,
-  onExportCsv,
 }: ContextMenuProps) {
   // Close on click outside or escape
   useEffect(() => {

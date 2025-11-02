@@ -59,7 +59,7 @@ export interface LocalPlaylist {
 export interface OperationHistory {
   id: number;
   timestamp: number;
-  operation_type: 'merge' | 'delete' | 'rename' | 'subtract' | 'intersect' | 'tag';
+  operation_type: 'merge' | 'delete' | 'rename' | 'subtract' | 'intersect' | 'tag' | 'remove_duplicates' | 'fix_broken_links';
   playlists_affected: string; // JSON array
   details: string; // JSON object
   can_undo: boolean;

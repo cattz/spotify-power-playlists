@@ -98,7 +98,7 @@ export class PlaylistSyncService {
 
                 if (isUnlinked) {
                   unlinkedCount++;
-                } else if (item.track.duration_ms) {
+                } else if (item.track && item.track.duration_ms) {
                   duration += item.track.duration_ms;
                 }
               }
@@ -183,7 +183,7 @@ export class PlaylistSyncService {
 
                 if (isUnlinked) {
                   unlinkedCount++;
-                } else if (item.track.duration_ms) {
+                } else if (item.track && item.track.duration_ms) {
                   duration += item.track.duration_ms;
                 }
               }
