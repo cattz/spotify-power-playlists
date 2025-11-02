@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            artifact_pattern: '*.{dmg,zip}'
+            build_script: build:mac
+          - os: ubuntu-latest
+            artifact_pattern: '*.{AppImage,deb}'
+            build_script: build:linux
+          - os: windows-latest
+            artifact_pattern: '*.exe'
+            build_script: build:win
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run ${{ matrix.build_script }}
+        env:
+          CI: true
+          # Enable code signing if certificates are configured
+          # CSC_LINK: ${{ secrets.CSC_LINK }}
+          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/${{ matrix.artifact_pattern }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create a summary of the release
+  release-complete:
+    name: Release Complete
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release summary
+        run: |
+          echo "Release ${{ github.ref_name }} completed successfully!"
+          echo "Artifacts built for macOS, Linux, and Windows"

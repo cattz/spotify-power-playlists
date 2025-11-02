@@ -6,6 +6,9 @@ dist/
 dist-electron/
 release/
 build/
+# But allow icon files in build directory
+!build/icon.*
+!build/README.md
 
 # Development
 .vite/

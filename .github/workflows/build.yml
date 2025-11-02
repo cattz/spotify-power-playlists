@@ -1,0 +1,96 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            artifact_name: mac
+            build_script: build:mac
+          - os: ubuntu-latest
+            artifact_name: linux
+            build_script: build:linux
+          - os: windows-latest
+            artifact_name: windows
+            build_script: build:win
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript type check
+        run: npm run typecheck
+
+      - name: Build application
+        run: npm run ${{ matrix.build_script }}
+        env:
+          # Prevent Electron from spawning extra processes
+          CI: true
+
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-build
+          path: |
+            release/*.dmg
+            release/*.zip
+          retention-days: 7
+
+      - name: Upload artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-build
+          path: |
+            release/*.AppImage
+            release/*.deb
+          retention-days: 7
+
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-build
+          path: |
+            release/*.exe
+          retention-days: 7
+
+  # Job to verify all builds completed successfully
+  build-complete:
+    name: Build Complete
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: All builds successful
+        run: echo "All platform builds completed successfully!"
